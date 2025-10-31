@@ -178,7 +178,7 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
             LogcatManager.addLog("Camera still bound in onPause - should continue running", "Camera")
             // Force camera to stay active by keeping analyzer running
             imageAnalyzer?.let {
-                LogcatManager.addLog("ImageAnalyzer still active: ${it.targetAspectRatio}", "Camera")
+                LogcatManager.addLog("ImageAnalyzer still active", "Camera")
             }
         } else {
             LogcatManager.addLog("WARNING: Camera not bound in onPause - may need rebinding", "Camera")
