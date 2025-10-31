@@ -31,11 +31,31 @@ class SettingsFragment : Fragment() {
     private var isLogcatVisible = false
     private val logcatUpdateListener: (String) -> Unit = { logText ->
         // Safely access binding - it might be null if fragment view is destroyed
+        // Ensure we're on main thread
         _binding?.let { binding ->
-            binding.logcatText.text = logText
-            // Auto scroll to bottom
-            binding.logcatScroll.post {
-                binding.logcatScroll.fullScroll(android.view.View.FOCUS_DOWN)
+            try {
+                // Update on main thread
+                binding.root.post {
+                    if (_binding != null && isAdded) {
+                        try {
+                            binding.logcatText.text = logText
+                            // Auto scroll to bottom
+                            binding.logcatScroll.post {
+                                if (_binding != null) {
+                                    try {
+                                        binding.logcatScroll.fullScroll(android.view.View.FOCUS_DOWN)
+                                    } catch (e: Exception) {
+                                        android.util.Log.e("SettingsFragment", "Error scrolling logcat", e)
+                                    }
+                                }
+                            }
+                        } catch (e: Exception) {
+                            android.util.Log.e("SettingsFragment", "Error updating logcat text", e)
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("SettingsFragment", "Error in logcat listener", e)
             }
         }
     }
@@ -81,60 +101,96 @@ class SettingsFragment : Fragment() {
     override fun onResume() {
         super.onResume()
         // Register logcat listener only if view is created
-        if (_binding != null) {
-            LogcatManager.registerListener(logcatUpdateListener)
-            LogcatManager.addLog("Settings opened", "Settings")
+        try {
+            if (_binding != null && isAdded) {
+                LogcatManager.registerListener(logcatUpdateListener)
+                // Don't call addLog here to avoid potential listener issues
+                android.util.Log.d("SettingsFragment", "Settings opened")
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("SettingsFragment", "Error in onResume", e)
         }
     }
     
     override fun onPause() {
         super.onPause()
         // Unregister logcat listener
-        LogcatManager.unregisterListener(logcatUpdateListener)
+        try {
+            LogcatManager.unregisterListener(logcatUpdateListener)
+        } catch (e: Exception) {
+            android.util.Log.e("SettingsFragment", "Error unregistering listener", e)
+        }
     }
     
     private fun setupLogcat() {
         // Set initial log text - check binding first
         _binding?.let { binding ->
             try {
-                binding.logcatText.text = LogcatManager.getLogText()
+                val logText = LogcatManager.getLogText()
+                binding.logcatText.text = logText
             } catch (e: Exception) {
-                LogcatManager.addLog("Error setting initial logcat text: ${e.message}", "Settings")
-                binding.logcatText.text = "Error loading logs: ${e.message}"
+                android.util.Log.e("SettingsFragment", "Error setting initial logcat text", e)
+                try {
+                    binding.logcatText.text = "Error loading logs: ${e.message}"
+                } catch (e2: Exception) {
+                    android.util.Log.e("SettingsFragment", "Error setting error message", e2)
+                }
             }
             
             binding.toggleLogcat.setOnClickListener {
-                isLogcatVisible = !isLogcatVisible
-                binding.logcatContainer.visibility = if (isLogcatVisible) View.VISIBLE else View.GONE
-                binding.copyLogcat.visibility = if (isLogcatVisible) View.VISIBLE else View.GONE
-                binding.toggleLogcat.text = if (isLogcatVisible) "Hide Logcat" else "Show Logcat"
-                
-                if (isLogcatVisible) {
-                    // Refresh log when showing
-                    try {
-                        binding.logcatText.text = LogcatManager.getLogText()
-                        binding.logcatScroll.post {
-                            binding.logcatScroll.fullScroll(android.view.View.FOCUS_DOWN)
+                try {
+                    if (!isAdded) return@setOnClickListener
+                    
+                    isLogcatVisible = !isLogcatVisible
+                    binding.logcatContainer.visibility = if (isLogcatVisible) View.VISIBLE else View.GONE
+                    binding.copyLogcat.visibility = if (isLogcatVisible) View.VISIBLE else View.GONE
+                    binding.toggleLogcat.text = if (isLogcatVisible) "Hide Logcat" else "Show Logcat"
+                    
+                    if (isLogcatVisible) {
+                        // Refresh log when showing
+                        try {
+                            val logText = LogcatManager.getLogText()
+                            binding.logcatText.text = logText
+                            
+                            // Scroll to bottom after a short delay
+                            binding.logcatScroll.postDelayed({
+                                if (_binding != null && isAdded) {
+                                    try {
+                                        binding.logcatScroll.fullScroll(android.view.View.FOCUS_DOWN)
+                                    } catch (e: Exception) {
+                                        android.util.Log.e("SettingsFragment", "Error scrolling", e)
+                                    }
+                                }
+                            }, 100)
+                        } catch (e: Exception) {
+                            android.util.Log.e("SettingsFragment", "Error refreshing logcat", e)
                         }
-                    } catch (e: Exception) {
-                        LogcatManager.addLog("Error refreshing logcat: ${e.message}", "Settings")
                     }
+                } catch (e: Exception) {
+                    android.util.Log.e("SettingsFragment", "Error in toggle logcat", e)
                 }
             }
             
             binding.copyLogcat.setOnClickListener {
-                // Ensure we're on main thread and fragment is still attached
-                if (!isAdded || context == null) {
-                    Toast.makeText(context, "Cannot copy: Fragment not attached", Toast.LENGTH_SHORT).show()
-                    return@setOnClickListener
-                }
-                
                 try {
-                    // Get log text first
-                    val logText = LogcatManager.getLogText()
+                    // Ensure we're on main thread and fragment is still attached
+                    if (!isAdded || context == null) {
+                        return@setOnClickListener
+                    }
+                    
+                    // Get log text first (on current thread - this should be safe)
+                    val logText = try {
+                        LogcatManager.getLogText()
+                    } catch (e: Exception) {
+                        android.util.Log.e("SettingsFragment", "Error getting log text", e)
+                        Toast.makeText(context, "Failed to get logs", Toast.LENGTH_SHORT).show()
+                        return@setOnClickListener
+                    }
                     
                     // Ensure we run clipboard operation on main thread
                     binding.root.post {
+                        if (!isAdded || context == null) return@post
+                        
                         try {
                             val clipboard = requireContext().getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
                             if (clipboard == null) {
@@ -144,18 +200,24 @@ class SettingsFragment : Fragment() {
                             
                             val clip = ClipData.newPlainText("iPoint Logcat", logText)
                             clipboard.setPrimaryClip(clip)
+                            
+                            // Show toast on main thread
                             Toast.makeText(requireContext(), "Logcat copied to clipboard", Toast.LENGTH_SHORT).show()
-                            LogcatManager.addLog("Logcat copied to clipboard (${logText.length} chars)", "Settings")
+                            
+                            // Don't call LogcatManager.addLog here to avoid potential infinite loop
+                            android.util.Log.d("SettingsFragment", "Logcat copied to clipboard (${logText.length} chars)")
                         } catch (e: Exception) {
-                            LogcatManager.addLog("Error copying logcat: ${e.message}", "Settings")
                             android.util.Log.e("SettingsFragment", "Clipboard error", e)
-                            Toast.makeText(requireContext(), "Failed to copy: ${e.message}", Toast.LENGTH_SHORT).show()
+                            if (isAdded && context != null) {
+                                Toast.makeText(requireContext(), "Failed to copy: ${e.message}", Toast.LENGTH_SHORT).show()
+                            }
                         }
                     }
                 } catch (e: Exception) {
-                    LogcatManager.addLog("Error getting log text: ${e.message}", "Settings")
-                    android.util.Log.e("SettingsFragment", "Get log text error", e)
-                    Toast.makeText(requireContext(), "Failed to get logs: ${e.message}", Toast.LENGTH_SHORT).show()
+                    android.util.Log.e("SettingsFragment", "Error in copy logcat", e)
+                    if (isAdded && context != null) {
+                        Toast.makeText(context, "Failed to copy logs", Toast.LENGTH_SHORT).show()
+                    }
                 }
             }
         }

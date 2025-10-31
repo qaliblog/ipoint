@@ -29,10 +29,23 @@ object LogcatManager {
             }
         }
         
-        // Notify listeners
-        val fullLog = getLogText()
+        // Notify listeners (with error handling to prevent crashes)
+        val fullLog = try {
+            getLogText()
+        } catch (e: Exception) {
+            Log.e("LogcatManager", "Error getting log text for listeners: ${e.message}", e)
+            return
+        }
+        
         synchronized(listeners) {
-            listeners.forEach { it(fullLog) }
+            val listenersCopy = listeners.toList() // Create copy to avoid modification during iteration
+            listenersCopy.forEach { listener ->
+                try {
+                    listener(fullLog)
+                } catch (e: Exception) {
+                    Log.e("LogcatManager", "Error in logcat listener: ${e.message}", e)
+                }
+            }
         }
         
         // Also log to system logcat
