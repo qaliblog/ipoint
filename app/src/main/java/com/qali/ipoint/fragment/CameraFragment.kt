@@ -511,8 +511,11 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
             
             // ALWAYS update system-wide pointer overlay (works even in background)
             // This is the critical part - must happen every frame, regardless of app state
-            // Do this FIRST before any UI updates - only if cursor movement is enabled
-            if (isCursorMovementEnabled && isCursorMovementEnabled()) {
+            // Check global flag to see if cursor movement should be enabled
+            val cursorEnabled = isCursorMovementEnabled()
+            isCursorMovementEnabled = cursorEnabled // Sync local flag
+            
+            if (cursorEnabled) {
                 try {
                     PointerOverlayService.updatePointerPosition(adjustedX, adjustedY)
                 } catch (e: Exception) {
@@ -533,10 +536,12 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
                         }
                     }
                 }
+            } else {
+                // Log when cursor is disabled (for debugging)
+                if (System.currentTimeMillis() % 2000 < 50) {
+                    LogcatManager.addLog("Cursor movement disabled (user typing)", "Tracking")
+                }
             }
-            
-            // Update local flag from global
-            isCursorMovementEnabled = isCursorMovementEnabled()
             
             // Update UI only if fragment is still active and visible
             if (isResumed && _fragmentCameraBinding != null) {
@@ -563,8 +568,11 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
                 LogcatManager.addLog("Eye: (${adjustedX.toInt()}, ${adjustedY.toInt()}) | Area: ${String.format(Locale.US, "%.4f", trackingResult.eyeArea)} | Pos: (${String.format(Locale.US, "%.2f", trackingResult.eyePositionX)}, ${String.format(Locale.US, "%.2f", trackingResult.eyePositionY)})", "Tracking")
             }
         } else {
-            // No face detected - hide pointer
-            PointerOverlayService.updatePointerPosition(-1f, -1f)
+            // No face detected - hide pointer (only if cursor movement is enabled)
+            // Always hide pointer overlay even if cursor movement disabled
+            if (isCursorMovementEnabled()) {
+                PointerOverlayService.updatePointerPosition(-1f, -1f)
+            }
             
             if (isResumed && _fragmentCameraBinding != null) {
                 activity?.runOnUiThread {
