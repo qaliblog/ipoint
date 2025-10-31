@@ -43,15 +43,20 @@ class PointerOverlayService : Service() {
         super.onCreate()
         instance = this
         
-        // Create notification channel for foreground service
-        createNotificationChannel()
-        
-        // Start as foreground service immediately
-        startForeground(NOTIFICATION_ID, createNotification())
-        
         windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
         
         createPointerView()
+        
+        // Create notification channel and start foreground service after view is created
+        createNotificationChannel()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            try {
+                startForeground(NOTIFICATION_ID, createNotification())
+                Log.d(TAG, "Started as foreground service")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to start foreground service: ${e.message}", e)
+            }
+        }
         
         Log.d(TAG, "PointerOverlayService created")
     }
@@ -83,9 +88,13 @@ class PointerOverlayService : Service() {
     }
     
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        // Ensure foreground service is maintained
+        // Ensure foreground service is maintained (only if Android O+)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForeground(NOTIFICATION_ID, createNotification())
+            try {
+                startForeground(NOTIFICATION_ID, createNotification())
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to start foreground in onStartCommand: ${e.message}", e)
+            }
         }
         return START_STICKY // Restart if killed
     }

@@ -71,8 +71,7 @@
         <service
             android:name=".PointerOverlayService"
             android:enabled="true"
-            android:exported="false"
-            android:foregroundServiceType="none">
+            android:exported="false">
         </service>
     </application>
 
