@@ -27,11 +27,9 @@ jobs:
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
       
-    - name: Download MediaPipe model assets
-      run: ./gradlew :app:downloadTaskFile
-      
     - name: Build debug APK
       run: ./gradlew assembleDebug
+      # Note: downloadTaskFile will run automatically via preBuild.dependsOn
       
     - name: Upload APK artifact
       uses: actions/upload-artifact@v4

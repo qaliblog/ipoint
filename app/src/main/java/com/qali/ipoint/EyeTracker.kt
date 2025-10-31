@@ -49,7 +49,10 @@ class EyeTracker(private val displayMetrics: DisplayMetrics) {
         val rightEyeRegion: EyeRegion?,
         val combinedCenter: PointF?,
         val screenX: Float,
-        val screenY: Float
+        val screenY: Float,
+        val eyeArea: Float = 0f, // Combined eye area (0 = biggest, increases as eyes get farther)
+        val eyePositionX: Float = 0f, // Normalized X position of eyes (0-1)
+        val eyePositionY: Float = 0f  // Normalized Y position of eyes (0-1)
     )
     
     /**
@@ -171,14 +174,41 @@ class EyeTracker(private val displayMetrics: DisplayMetrics) {
             else -> combinedCenter
         }
         
-        // Map normalized coordinates (0-1) to screen coordinates
-        val screenX = if (finalPoint != null) {
+        // Calculate eye area (larger area = closer to screen, smaller = farther)
+        // We'll use the average area of both eyes, inverted so 0 = closest (biggest), higher = farther (smaller)
+        val eyeArea: Float = when {
+            leftEyeRegion != null && rightEyeRegion != null -> {
+                val avgArea = (leftEyeRegion.width * leftEyeRegion.height + rightEyeRegion.width * rightEyeRegion.height) / 2f
+                // Invert: use max possible area as reference (we'll normalize to 0-1 range)
+                // For now, return the area itself (bigger = closer)
+                avgArea
+            }
+            leftEyeRegion != null -> leftEyeRegion.width * leftEyeRegion.height
+            rightEyeRegion != null -> rightEyeRegion.width * rightEyeRegion.height
+            else -> 0f
+        }
+        
+        // Calculate distance metric: 0 for biggest area (closest), increases as area decreases
+        // We normalize based on typical eye area ranges (this will be calibrated)
+        val maxExpectedArea = 0.01f // Maximum expected eye area in normalized coordinates
+        val distance = if (eyeArea > 0) {
+            (maxExpectedArea - eyeArea.coerceAtMost(maxExpectedArea)) / maxExpectedArea
+        } else {
+            0f
+        }
+        
+        // Get eye position for effect calculations
+        val eyePosX = finalPoint?.x ?: 0.5f
+        val eyePosY = finalPoint?.y ?: 0.5f
+        
+        // Map normalized coordinates (0-1) to screen coordinates (base position)
+        val baseScreenX = if (finalPoint != null) {
             finalPoint.x * displayMetrics.widthPixels
         } else {
             displayMetrics.widthPixels / 2f
         }
         
-        val screenY = if (finalPoint != null) {
+        val baseScreenY = if (finalPoint != null) {
             finalPoint.y * displayMetrics.heightPixels
         } else {
             displayMetrics.heightPixels / 2f
@@ -188,8 +218,11 @@ class EyeTracker(private val displayMetrics: DisplayMetrics) {
             leftEyeRegion = leftEyeRegion,
             rightEyeRegion = rightEyeRegion,
             combinedCenter = finalPoint,
-            screenX = screenX,
-            screenY = screenY
+            screenX = baseScreenX,
+            screenY = baseScreenY,
+            eyeArea = distance, // Distance: 0 = closest, increases as farther
+            eyePositionX = eyePosX,
+            eyePositionY = eyePosY
         )
     }
     

@@ -1,0 +1,178 @@
+package com.qali.ipoint.fragment
+
+import android.os.Bundle
+import android.provider.Settings
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.widget.Toast
+import androidx.fragment.app.Fragment
+import com.qali.ipoint.R
+import com.qali.ipoint.SettingsManager
+import com.qali.ipoint.databinding.FragmentSettingsBinding
+import java.text.DecimalFormat
+import java.util.Locale
+
+class SettingsFragment : Fragment() {
+    
+    private var _binding: FragmentSettingsBinding? = null
+    private val binding get() = _binding!!
+    private lateinit var settingsManager: SettingsManager
+    private val df = DecimalFormat("#.##")
+    private var isLogcatVisible = false
+    
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View {
+        _binding = FragmentSettingsBinding.inflate(inflater, container, false)
+        return binding.root
+    }
+    
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        
+        settingsManager = SettingsManager(requireContext())
+        
+        setupLogcat()
+        setupMovementMultipliers()
+        setupEyePositionEffects()
+        setupDistanceMultipliers()
+    }
+    
+    private fun setupLogcat() {
+        binding.toggleLogcat.setOnClickListener {
+            isLogcatVisible = !isLogcatVisible
+            binding.logcatContainer.visibility = if (isLogcatVisible) View.VISIBLE else View.GONE
+            binding.toggleLogcat.text = if (isLogcatVisible) "Hide Logcat" else "Show Logcat"
+        }
+    }
+    
+    private fun setupMovementMultipliers() {
+        updateValue(binding.xMovementValue, settingsManager.xMovementMultiplier)
+        
+        binding.xMovementMinus.setOnClickListener {
+            val newValue = (settingsManager.xMovementMultiplier - 0.1f).coerceAtLeast(0.1f)
+            settingsManager.xMovementMultiplier = newValue
+            updateValue(binding.xMovementValue, newValue)
+        }
+        
+        binding.xMovementPlus.setOnClickListener {
+            val newValue = settingsManager.xMovementMultiplier + 0.1f
+            settingsManager.xMovementMultiplier = newValue
+            updateValue(binding.xMovementValue, newValue)
+        }
+        
+        updateValue(binding.yMovementValue, settingsManager.yMovementMultiplier)
+        
+        binding.yMovementMinus.setOnClickListener {
+            val newValue = (settingsManager.yMovementMultiplier - 0.1f).coerceAtLeast(0.1f)
+            settingsManager.yMovementMultiplier = newValue
+            updateValue(binding.yMovementValue, newValue)
+        }
+        
+        binding.yMovementPlus.setOnClickListener {
+            val newValue = settingsManager.yMovementMultiplier + 0.1f
+            settingsManager.yMovementMultiplier = newValue
+            updateValue(binding.yMovementValue, newValue)
+        }
+    }
+    
+    private fun setupEyePositionEffects() {
+        updateValue(binding.eyePosXEffectValue, settingsManager.eyePositionXEffect)
+        
+        binding.eyePosXEffectMinus.setOnClickListener {
+            val newValue = settingsManager.eyePositionXEffect - 0.1f
+            settingsManager.eyePositionXEffect = newValue
+            updateValue(binding.eyePosXEffectValue, newValue)
+        }
+        
+        binding.eyePosXEffectPlus.setOnClickListener {
+            val newValue = settingsManager.eyePositionXEffect + 0.1f
+            settingsManager.eyePositionXEffect = newValue
+            updateValue(binding.eyePosXEffectValue, newValue)
+        }
+        
+        updateValue(binding.eyePosXMultValue, settingsManager.eyePositionXMultiplier)
+        
+        binding.eyePosXMultMinus.setOnClickListener {
+            val newValue = settingsManager.eyePositionXMultiplier - 0.1f
+            settingsManager.eyePositionXMultiplier = newValue
+            updateValue(binding.eyePosXMultValue, newValue)
+        }
+        
+        binding.eyePosXMultPlus.setOnClickListener {
+            val newValue = settingsManager.eyePositionXMultiplier + 0.1f
+            settingsManager.eyePositionXMultiplier = newValue
+            updateValue(binding.eyePosXMultValue, newValue)
+        }
+        
+        updateValue(binding.eyePosYEffectValue, settingsManager.eyePositionYEffect)
+        
+        binding.eyePosYEffectMinus.setOnClickListener {
+            val newValue = settingsManager.eyePositionYEffect - 0.1f
+            settingsManager.eyePositionYEffect = newValue
+            updateValue(binding.eyePosYEffectValue, newValue)
+        }
+        
+        binding.eyePosYEffectPlus.setOnClickListener {
+            val newValue = settingsManager.eyePositionYEffect + 0.1f
+            settingsManager.eyePositionYEffect = newValue
+            updateValue(binding.eyePosYEffectValue, newValue)
+        }
+        
+        updateValue(binding.eyePosYMultValue, settingsManager.eyePositionYMultiplier)
+        
+        binding.eyePosYMultMinus.setOnClickListener {
+            val newValue = settingsManager.eyePositionYMultiplier - 0.1f
+            settingsManager.eyePositionYMultiplier = newValue
+            updateValue(binding.eyePosYMultValue, newValue)
+        }
+        
+        binding.eyePosYMultPlus.setOnClickListener {
+            val newValue = settingsManager.eyePositionYMultiplier + 0.1f
+            settingsManager.eyePositionYMultiplier = newValue
+            updateValue(binding.eyePosYMultValue, newValue)
+        }
+    }
+    
+    private fun setupDistanceMultipliers() {
+        updateValue(binding.distanceXValue, settingsManager.distanceXMultiplier)
+        
+        binding.distanceXMinus.setOnClickListener {
+            val newValue = settingsManager.distanceXMultiplier - 0.1f
+            settingsManager.distanceXMultiplier = newValue
+            updateValue(binding.distanceXValue, newValue)
+        }
+        
+        binding.distanceXPlus.setOnClickListener {
+            val newValue = settingsManager.distanceXMultiplier + 0.1f
+            settingsManager.distanceXMultiplier = newValue
+            updateValue(binding.distanceXValue, newValue)
+        }
+        
+        updateValue(binding.distanceYValue, settingsManager.distanceYMultiplier)
+        
+        binding.distanceYMinus.setOnClickListener {
+            val newValue = settingsManager.distanceYMultiplier - 0.1f
+            settingsManager.distanceYMultiplier = newValue
+            updateValue(binding.distanceYValue, newValue)
+        }
+        
+        binding.distanceYPlus.setOnClickListener {
+            val newValue = settingsManager.distanceYMultiplier + 0.1f
+            settingsManager.distanceYMultiplier = newValue
+            updateValue(binding.distanceYValue, newValue)
+        }
+    }
+    
+    private fun updateValue(textView: android.widget.TextView, value: Float) {
+        textView.text = df.format(value)
+    }
+    
+    override fun onDestroyView() {
+        super.onDestroyView()
+        _binding = null
+    }
+}

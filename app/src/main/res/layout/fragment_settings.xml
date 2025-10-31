@@ -1,0 +1,397 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#F5F5F5"
+    android:padding="16dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <!-- Logcat Section -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Logcat"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="8dp" />
+
+        <FrameLayout
+            android:id="@+id/logcat_container"
+            android:layout_width="match_parent"
+            android:layout_height="200dp"
+            android:background="#000000"
+            android:padding="8dp"
+            android:visibility="gone">
+
+            <ScrollView
+                android:id="@+id/logcat_scroll"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+
+                <TextView
+                    android:id="@+id/logcat_text"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textColor="#FFFFFF"
+                    android:textSize="10sp"
+                    android:fontFamily="monospace" />
+            </ScrollView>
+        </FrameLayout>
+
+        <Button
+            android:id="@+id/toggle_logcat"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Show Logcat"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Movement Multipliers -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Movement Multipliers"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="8dp" />
+
+        <!-- X Movement Multiplier -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:padding="8dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="X Movement Multiplier"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/x_movement_value"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="1.0"
+                android:textSize="14sp"
+                android:minWidth="40dp"
+                android:gravity="center" />
+
+            <Button
+                android:id="@+id/x_movement_minus"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:text="-"
+                android:layout_marginStart="8dp" />
+
+            <Button
+                android:id="@+id/x_movement_plus"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:text="+"
+                android:layout_marginStart="4dp" />
+        </LinearLayout>
+
+        <!-- Y Movement Multiplier -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:padding="8dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Y Movement Multiplier"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/y_movement_value"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="1.0"
+                android:textSize="14sp"
+                android:minWidth="40dp"
+                android:gravity="center" />
+
+            <Button
+                android:id="@+id/y_movement_minus"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:text="-"
+                android:layout_marginStart="8dp" />
+
+            <Button
+                android:id="@+id/y_movement_plus"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:text="+"
+                android:layout_marginStart="4dp" />
+        </LinearLayout>
+
+        <!-- Eye Position Effects -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Eye Position Effects"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="8dp" />
+
+        <!-- Eye Position X Effect -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:padding="8dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Eye Position X Effect"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/eye_pos_x_effect_value"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="1.0"
+                android:textSize="14sp"
+                android:minWidth="40dp"
+                android:gravity="center" />
+
+            <Button
+                android:id="@+id/eye_pos_x_effect_minus"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:text="-"
+                android:layout_marginStart="8dp" />
+
+            <Button
+                android:id="@+id/eye_pos_x_effect_plus"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:text="+"
+                android:layout_marginStart="4dp" />
+        </LinearLayout>
+
+        <!-- Eye Position X Multiplier -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:padding="8dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Eye Position X Multiplier"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/eye_pos_x_mult_value"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="1.0"
+                android:textSize="14sp"
+                android:minWidth="40dp"
+                android:gravity="center" />
+
+            <Button
+                android:id="@+id/eye_pos_x_mult_minus"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:text="-"
+                android:layout_marginStart="8dp" />
+
+            <Button
+                android:id="@+id/eye_pos_x_mult_plus"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:text="+"
+                android:layout_marginStart="4dp" />
+        </LinearLayout>
+
+        <!-- Eye Position Y Effect -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:padding="8dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Eye Position Y Effect"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/eye_pos_y_effect_value"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="1.0"
+                android:textSize="14sp"
+                android:minWidth="40dp"
+                android:gravity="center" />
+
+            <Button
+                android:id="@+id/eye_pos_y_effect_minus"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:text="-"
+                android:layout_marginStart="8dp" />
+
+            <Button
+                android:id="@+id/eye_pos_y_effect_plus"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:text="+"
+                android:layout_marginStart="4dp" />
+        </LinearLayout>
+
+        <!-- Eye Position Y Multiplier -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:padding="8dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Eye Position Y Multiplier"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/eye_pos_y_mult_value"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="1.0"
+                android:textSize="14sp"
+                android:minWidth="40dp"
+                android:gravity="center" />
+
+            <Button
+                android:id="@+id/eye_pos_y_mult_minus"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:text="-"
+                android:layout_marginStart="8dp" />
+
+            <Button
+                android:id="@+id/eye_pos_y_mult_plus"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:text="+"
+                android:layout_marginStart="4dp" />
+        </LinearLayout>
+
+        <!-- Distance-Based Range (Eye Area) -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Distance-Based Range (Eye Area)"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="8dp" />
+
+        <!-- Distance X Multiplier -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:padding="8dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Distance X Multiplier"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/distance_x_value"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="1.0"
+                android:textSize="14sp"
+                android:minWidth="40dp"
+                android:gravity="center" />
+
+            <Button
+                android:id="@+id/distance_x_minus"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:text="-"
+                android:layout_marginStart="8dp" />
+
+            <Button
+                android:id="@+id/distance_x_plus"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:text="+"
+                android:layout_marginStart="4dp" />
+        </LinearLayout>
+
+        <!-- Distance Y Multiplier -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:padding="8dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Distance Y Multiplier"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/distance_y_value"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="1.0"
+                android:textSize="14sp"
+                android:minWidth="40dp"
+                android:gravity="center" />
+
+            <Button
+                android:id="@+id/distance_y_minus"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:text="-"
+                android:layout_marginStart="8dp" />
+
+            <Button
+                android:id="@+id/distance_y_plus"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:text="+"
+                android:layout_marginStart="4dp" />
+        </LinearLayout>
+
+    </LinearLayout>
+</ScrollView>

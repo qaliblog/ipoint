@@ -22,6 +22,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.Configuration
+import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.text.TextUtils
@@ -53,7 +54,10 @@ import com.qali.ipoint.EyeTracker
 import com.qali.ipoint.FaceLandmarkerHelper
 import com.qali.ipoint.MainViewModel
 import com.qali.ipoint.MouseControlService
+import com.qali.ipoint.PointerOverlayService
 import com.qali.ipoint.R
+import com.qali.ipoint.SettingsManager
+import com.qali.ipoint.TrackingCalculator
 import com.qali.ipoint.databinding.FragmentCameraBinding
 import com.google.mediapipe.tasks.vision.core.RunningMode
 import java.util.Locale
@@ -92,6 +96,8 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
     
     /** Eye tracking */
     private lateinit var eyeTracker: EyeTracker
+    private lateinit var settingsManager: SettingsManager
+    private lateinit var trackingCalculator: TrackingCalculator
     private var isMouseControlEnabled = false
     private val logBuffer = mutableListOf<String>()
     private val maxLogLines = 50
@@ -159,14 +165,24 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
         val displayMetrics = resources.displayMetrics
         eyeTracker = EyeTracker(displayMetrics)
         
+        // Initialize Settings and Calculator
+        settingsManager = SettingsManager(requireContext())
+        trackingCalculator = TrackingCalculator(settingsManager, displayMetrics)
+        
         // Set EyeTracker in OverlayView
         fragmentCameraBinding.overlay.setEyeTracker(eyeTracker)
 
-        // Initialize logcat view
-        initLogcatView()
+        // Setup settings button
+        fragmentCameraBinding.settingsButton.setOnClickListener {
+            Navigation.findNavController(requireActivity(), R.id.fragment_container)
+                .navigate(R.id.action_camera_to_settings)
+        }
         
         // Check and request accessibility permission
         checkAccessibilityPermission()
+        
+        // Request overlay permission and start pointer service
+        requestOverlayPermission()
 
         // Initialize our background executor
         backgroundExecutor = Executors.newSingleThreadExecutor()
@@ -192,14 +208,31 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
         }
     }
     
-    private fun initLogcatView() {
-        fragmentCameraBinding.logcatToggle.setOnClickListener {
-            val isVisible = fragmentCameraBinding.logcatContainer.visibility == View.VISIBLE
-            fragmentCameraBinding.logcatContainer.visibility = if (isVisible) View.GONE else View.VISIBLE
+    private fun requestOverlayPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (!Settings.canDrawOverlays(requireContext())) {
+                val intent = Intent(
+                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    android.net.Uri.parse("package:${requireContext().packageName}")
+                )
+                startActivity(intent)
+                addLog("Overlay permission requested")
+            } else {
+                startPointerService()
+            }
+        } else {
+            startPointerService()
         }
-        
-        // Add log message
-        addLog("Eye Tracker initialized")
+    }
+    
+    private fun startPointerService() {
+        val intent = Intent(requireContext(), PointerOverlayService::class.java)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            requireContext().startForegroundService(intent)
+        } else {
+            requireContext().startService(intent)
+        }
+        addLog("Pointer overlay service started")
     }
     
     private fun addLog(message: String) {
@@ -210,16 +243,6 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
         // Keep only last maxLogLines
         if (logBuffer.size > maxLogLines) {
             logBuffer.removeAt(0)
-        }
-        
-        // Update UI on main thread
-        activity?.runOnUiThread {
-            fragmentCameraBinding.logcatText.text = logBuffer.joinToString("\n")
-            // Auto scroll to bottom
-            val scrollView = fragmentCameraBinding.logcatContainer.findViewById<android.widget.ScrollView>(R.id.logcat_scroll)
-            scrollView?.post {
-                scrollView.fullScroll(android.view.View.FOCUS_DOWN)
-            }
         }
         
         Log.d(TAG, logLine)
@@ -341,19 +364,24 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
                     val landmarks = faceLandmarksList[0] // Use first face
                     val trackingResult = eyeTracker.trackEyes(landmarks)
                     
-                    // Update pointer position on overlay (normalized to overlay coordinates)
-                    val overlayX = trackingResult.screenX
-                    val overlayY = trackingResult.screenY
-                    fragmentCameraBinding.overlay.setPointerPosition(overlayX, overlayY)
+                    // Apply all adjustments from settings
+                    val (adjustedX, adjustedY) = trackingCalculator.calculateAdjustedPosition(trackingResult)
+                    
+                    // Update pointer position on overlay
+                    fragmentCameraBinding.overlay.setPointerPosition(adjustedX, adjustedY)
+                    
+                    // Update system-wide pointer overlay
+                    PointerOverlayService.updatePointerPosition(adjustedX, adjustedY)
                     
                     // Control mouse if accessibility is enabled
                     if (isMouseControlEnabled) {
-                        MouseControlService.moveCursor(trackingResult.screenX, trackingResult.screenY)
+                        MouseControlService.moveCursor(adjustedX, adjustedY)
                     }
                     
-                    addLog("Eye tracked: (${trackingResult.screenX.toInt()}, ${trackingResult.screenY.toInt()})")
+                    addLog("Eye tracked: (${adjustedX.toInt()}, ${adjustedY.toInt()}) | Area: ${trackingResult.eyeArea}")
                 } else {
                     fragmentCameraBinding.overlay.setPointerPosition(-1f, -1f)
+                    PointerOverlayService.updatePointerPosition(-1f, -1f)
                 }
 
                 // Pass necessary information to OverlayView for drawing on the canvas
@@ -371,6 +399,7 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
 
     override fun onEmpty() {
         fragmentCameraBinding.overlay.setPointerPosition(-1f, -1f)
+        PointerOverlayService.updatePointerPosition(-1f, -1f)
         fragmentCameraBinding.overlay.clear()
     }
 
