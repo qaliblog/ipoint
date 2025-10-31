@@ -103,9 +103,26 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
     private var isMouseControlEnabled = false
     private var hasCheckedAccessibilityOnResume = false
     private var isSettingsOpening = false
+    private var isCursorMovementEnabled = true // Global flag to disable cursor when typing
+    
+    companion object {
+        private var cursorMovementEnabledGlobal = true
+        
+        fun setCursorMovementEnabled(enabled: Boolean) {
+            cursorMovementEnabledGlobal = enabled
+        }
+        
+        fun isCursorMovementEnabled(): Boolean {
+            return cursorMovementEnabledGlobal
+        }
+    }
 
     override fun onResume() {
         super.onResume()
+        // Re-enable cursor movement when fragment resumes
+        isCursorMovementEnabled = true
+        setCursorMovementEnabled(true)
+        
         // Make sure that all permissions are still present, since the
         // user could have removed them while the app was in paused state.
         if (!PermissionsFragment.hasPermissions(requireContext())) {
@@ -452,10 +469,20 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
     }
 
     private fun detectFace(imageProxy: ImageProxy) {
-        faceLandmarkerHelper.detectLiveStream(
-            imageProxy = imageProxy,
-            isFrontCamera = cameraFacing == CameraSelector.LENS_FACING_FRONT
-        )
+        // Always process frames, even in background - this is critical for continuous cursor updates
+        // The image analyzer runs on background thread and is bound to activity lifecycle
+        try {
+            faceLandmarkerHelper.detectLiveStream(
+                imageProxy = imageProxy,
+                isFrontCamera = cameraFacing == CameraSelector.LENS_FACING_FRONT
+            )
+        } catch (e: Exception) {
+            // Log but don't crash - MediaPipe might have issues
+            if (System.currentTimeMillis() % 2000 < 50) { // Log every 2 seconds
+                Log.e(TAG, "Failed to detect face: ${e.message}", e)
+            }
+            imageProxy.close() // Important: close the image proxy if processing fails
+        }
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
@@ -471,6 +498,7 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
         resultBundle: FaceLandmarkerHelper.ResultBundle
     ) {
         // Process even when app is in background - this ensures continuous updates
+        // This method runs on background thread from MediaPipe
         val faceLandmarksList = resultBundle.result.faceLandmarks()
         
         if (faceLandmarksList.isNotEmpty()) {
@@ -481,21 +509,34 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
             // Apply all adjustments from settings
             val (adjustedX, adjustedY) = trackingCalculator.calculateAdjustedPosition(trackingResult)
             
-            // Always update system-wide pointer overlay (works even in background)
+            // ALWAYS update system-wide pointer overlay (works even in background)
             // This is the critical part - must happen every frame, regardless of app state
-            try {
-                PointerOverlayService.updatePointerPosition(adjustedX, adjustedY)
-            } catch (e: Exception) {
-                // Log but don't crash - service might not be available
-                if (System.currentTimeMillis() % 2000 < 50) { // Log every 2 seconds
-                    Log.e(TAG, "Failed to update pointer overlay: ${e.message}", e)
+            // Do this FIRST before any UI updates - only if cursor movement is enabled
+            if (isCursorMovementEnabled && isCursorMovementEnabled()) {
+                try {
+                    PointerOverlayService.updatePointerPosition(adjustedX, adjustedY)
+                } catch (e: Exception) {
+                    // Log but don't crash - service might not be available
+                    if (System.currentTimeMillis() % 2000 < 50) { // Log every 2 seconds
+                        Log.e(TAG, "Failed to update pointer overlay: ${e.message}", e)
+                    }
+                }
+                
+                // Control mouse if accessibility is enabled (also works in background)
+                if (isMouseControlEnabled) {
+                    try {
+                        MouseControlService.moveCursor(adjustedX, adjustedY)
+                    } catch (e: Exception) {
+                        // Log but don't crash
+                        if (System.currentTimeMillis() % 2000 < 50) {
+                            Log.e(TAG, "Failed to move cursor: ${e.message}", e)
+                        }
+                    }
                 }
             }
             
-            // Control mouse if accessibility is enabled
-            if (isMouseControlEnabled) {
-                MouseControlService.moveCursor(adjustedX, adjustedY)
-            }
+            // Update local flag from global
+            isCursorMovementEnabled = isCursorMovementEnabled()
             
             // Update UI only if fragment is still active and visible
             if (isResumed && _fragmentCameraBinding != null) {

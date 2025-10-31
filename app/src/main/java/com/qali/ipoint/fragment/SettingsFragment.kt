@@ -15,6 +15,7 @@ import com.qali.ipoint.LogcatManager
 import com.qali.ipoint.R
 import com.qali.ipoint.SettingsManager
 import com.qali.ipoint.databinding.FragmentSettingsBinding
+import com.qali.ipoint.fragment.CameraFragment
 import java.text.DecimalFormat
 import java.util.Locale
 
@@ -289,6 +290,8 @@ class SettingsFragment : Fragment() {
         editText.setOnEditorActionListener { _, actionId, _ ->
             if (actionId == EditorInfo.IME_ACTION_DONE || actionId == EditorInfo.IME_ACTION_NEXT) {
                 isUserEditing = false
+                // Disable cursor movement when typing
+                CameraFragment.setCursorMovementEnabled(true)
                 try {
                     val inputValue = editText.text.toString().toFloatOrNull()
                     if (inputValue != null) {
@@ -315,9 +318,13 @@ class SettingsFragment : Fragment() {
         editText.setOnFocusChangeListener { _, hasFocus ->
             if (hasFocus) {
                 isUserEditing = true
+                // DISABLE cursor movement when user is typing
+                CameraFragment.setCursorMovementEnabled(false)
                 // Select all text when focused for easy editing
                 editText.post { editText.selectAll() }
             } else {
+                // Re-enable cursor movement when done editing
+                CameraFragment.setCursorMovementEnabled(true)
                 // Only update when focus is lost AND user was editing
                 if (isUserEditing) {
                     isUserEditing = false
@@ -342,12 +349,15 @@ class SettingsFragment : Fragment() {
         editText.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {
                 isUserEditing = true
+                CameraFragment.setCursorMovementEnabled(false)
             }
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
                 isUserEditing = true
+                CameraFragment.setCursorMovementEnabled(false)
             }
             override fun afterTextChanged(s: Editable?) {
                 isUserEditing = true
+                CameraFragment.setCursorMovementEnabled(false)
             }
         })
     }
