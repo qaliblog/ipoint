@@ -182,17 +182,36 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
         // Setup settings button - use post to ensure view is fully initialized
         fragmentCameraBinding.settingsButton.setOnClickListener {
             try {
-                val navController = Navigation.findNavController(requireActivity(), R.id.fragment_container)
-                // Check if we're already on settings, if so go back first
-                if (navController.currentDestination?.id == R.id.settings_fragment) {
-                    navController.popBackStack()
-                } else {
-                    navController.navigate(R.id.action_camera_to_settings)
+                LogcatManager.addLog("Settings button clicked", "Camera")
+                // Post to ensure navigation is ready
+                fragmentCameraBinding.settingsButton.post {
+                    try {
+                        val navController = Navigation.findNavController(requireActivity(), R.id.fragment_container)
+                        val currentDestinationId = navController.currentDestination?.id
+                        LogcatManager.addLog("Current destination: $currentDestinationId", "Camera")
+                        
+                        // Check if we're already on settings, if so go back first
+                        if (currentDestinationId == R.id.settings_fragment) {
+                            navController.popBackStack()
+                            LogcatManager.addLog("Already on settings, popping back", "Camera")
+                        } else {
+                            if (navController.currentDestination?.id == R.id.camera_fragment) {
+                                navController.navigate(R.id.action_camera_to_settings)
+                                LogcatManager.addLog("Navigating to settings", "Camera")
+                            } else {
+                                LogcatManager.addLog("Not on camera fragment, cannot navigate to settings", "Camera")
+                            }
+                        }
+                    } catch (e: Exception) {
+                        LogcatManager.addLog("Failed to navigate to settings: ${e.message}", "Camera")
+                        Log.e(TAG, "Navigation error", e)
+                        e.printStackTrace()
+                    }
                 }
-                LogcatManager.addLog("Navigating to settings", "Camera")
             } catch (e: Exception) {
-                LogcatManager.addLog("Failed to navigate to settings: ${e.message}", "Camera")
-                Log.e(TAG, "Navigation error", e)
+                LogcatManager.addLog("Failed to setup settings button: ${e.message}", "Camera")
+                Log.e(TAG, "Settings button error", e)
+                e.printStackTrace()
             }
         }
         
@@ -277,19 +296,32 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
         }
         
         val enabledServices = accessibilityManager.getEnabledAccessibilityServiceList(AccessibilityServiceInfo.FEEDBACK_ALL_MASK)
-        val serviceName = ComponentName(requireContext(), MouseControlService::class.java)
-        val servicePackage = serviceName.packageName
-        val serviceClass = serviceName.className
+        val serviceComponent = ComponentName(requireContext(), MouseControlService::class.java)
+        val servicePackage = serviceComponent.packageName
+        val serviceClass = serviceComponent.className
         
+        // More robust check: compare both package and class name, handling both short and fully qualified names
         val isEnabled = enabledServices.any { 
             val info = it.resolveInfo.serviceInfo
-            info.packageName == servicePackage && info.name == serviceClass
+            val enabledComponent = ComponentName(info.packageName, info.name)
+            
+            // Direct component comparison
+            enabledComponent == serviceComponent || 
+            // Also check if package matches and class name matches (handles fully qualified names)
+            (info.packageName == servicePackage && 
+             (info.name == serviceClass || info.name.endsWith(serviceClass)))
         }
         
         if (!isEnabled) {
             LogcatManager.addLog("MouseControlService not in enabled list", "Camera")
             LogcatManager.addLog("Looking for: $servicePackage/$serviceClass", "Camera")
-            LogcatManager.addLog("Enabled services: ${enabledServices.map { "${it.resolveInfo.serviceInfo.packageName}/${it.resolveInfo.serviceInfo.name}" }}", "Camera")
+            LogcatManager.addLog("Enabled services count: ${enabledServices.size}", "Camera")
+            enabledServices.forEach { service ->
+                val info = service.resolveInfo.serviceInfo
+                LogcatManager.addLog("  - ${info.packageName}/${info.name}", "Camera")
+            }
+        } else {
+            LogcatManager.addLog("MouseControlService is enabled and ready", "Camera")
         }
         
         return isEnabled
