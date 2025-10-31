@@ -21,6 +21,7 @@ import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.ui.setupWithNavController
+import com.qali.ipoint.CameraForegroundService
 import com.qali.ipoint.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() {
@@ -75,6 +76,14 @@ class MainActivity : AppCompatActivity() {
     
     override fun onDestroy() {
         super.onDestroy()
+        
+        // Stop camera foreground service
+        try {
+            CameraForegroundService.stop(this)
+        } catch (e: Exception) {
+            android.util.Log.e("MainActivity", "Error stopping camera service", e)
+        }
+        
         wakeLock?.let {
             if (it.isHeld) {
                 it.release()

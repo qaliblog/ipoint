@@ -51,6 +51,7 @@ import androidx.viewpager2.widget.ViewPager2.SCROLL_STATE_DRAGGING
 import androidx.viewpager2.widget.ViewPager2.SCROLL_STATE_IDLE
 import androidx.viewpager2.widget.ViewPager2.SCROLL_STATE_SETTLING
 import androidx.viewpager2.widget.ViewPager2.ScrollState
+import com.qali.ipoint.CameraForegroundService
 import com.qali.ipoint.EyeTracker
 import com.qali.ipoint.FaceLandmarkerHelper
 import com.qali.ipoint.LogcatManager
@@ -202,6 +203,9 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
         _fragmentCameraBinding = null
         super.onDestroyView()
 
+        // Don't stop foreground service here - let it continue running
+        // The service will be stopped when the activity is destroyed
+
         // Shut down our background executor
         backgroundExecutor.shutdown()
         backgroundExecutor.awaitTermination(
@@ -315,6 +319,15 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
         
         // Request overlay permission and start pointer service
         requestOverlayPermission()
+        
+        // Start camera foreground service to keep camera active
+        try {
+            CameraForegroundService.start(requireContext())
+            LogcatManager.addLog("Camera foreground service started", "Camera")
+        } catch (e: Exception) {
+            LogcatManager.addLog("Failed to start camera foreground service: ${e.message}", "Camera")
+            Log.e(TAG, "Failed to start camera foreground service", e)
+        }
         
         // Initialize logging
         LogcatManager.addLog("CameraFragment initialized", "Camera")
