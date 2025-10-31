@@ -320,6 +320,15 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
         // Request overlay permission and start pointer service
         requestOverlayPermission()
         
+        // Request notification permission if needed (Android 13+)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(requireContext(), android.Manifest.permission.POST_NOTIFICATIONS) 
+                != PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 1001)
+                LogcatManager.addLog("Requesting notification permission", "Camera")
+            }
+        }
+        
         // Start camera foreground service to keep camera active
         try {
             CameraForegroundService.start(requireContext())
@@ -327,6 +336,8 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
         } catch (e: Exception) {
             LogcatManager.addLog("Failed to start camera foreground service: ${e.message}", "Camera")
             Log.e(TAG, "Failed to start camera foreground service", e)
+            // If service fails, log the error
+            e.printStackTrace()
         }
         
         // Initialize logging

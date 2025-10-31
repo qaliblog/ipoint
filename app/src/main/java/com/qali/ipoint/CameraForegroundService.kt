@@ -89,12 +89,13 @@ class CameraForegroundService : Service() {
             val channel = NotificationChannel(
                 CHANNEL_ID,
                 "Camera Active",
-                NotificationManager.IMPORTANCE_LOW
+                NotificationManager.IMPORTANCE_DEFAULT // Changed to DEFAULT so it's more visible
             ).apply {
                 description = "Keeps camera active for eye tracking"
-                setShowBadge(false)
+                setShowBadge(true)
                 setSound(null, null)
                 enableVibration(false)
+                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
             }
             notificationManager?.createNotificationChannel(channel)
         }
@@ -111,39 +112,60 @@ class CameraForegroundService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         
+        // Use a better icon - battery/wake lock icon
+        val iconRes = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            android.R.drawable.ic_lock_power_off
+        } else {
+            android.R.drawable.ic_dialog_info
+        }
+        
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("iPoint Eye Tracking Active")
-            .setContentText("Camera is running for eye tracking")
-            .setSmallIcon(android.R.drawable.ic_dialog_info) // Wake lock icon alternative
+            .setContentTitle("?? iPoint Active")
+            .setContentText("Eye tracking running ? Camera active")
+            .setSmallIcon(iconRes)
             .setContentIntent(pendingIntent)
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setShowWhen(false)
+            .setStyle(NotificationCompat.BigTextStyle()
+                .bigText("Eye tracking is active. Camera is running for continuous cursor control."))
             .build()
     }
     
     fun updateNotification(text: String? = null) {
-        val notification = createNotification().apply {
-            if (text != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                NotificationCompat.Builder(this@CameraForegroundService, CHANNEL_ID)
-                    .setContentText(text)
-            }
+        val intent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         }
-        notificationManager?.notify(NOTIFICATION_ID, createNotification().apply {
-            // Update with custom text if provided
-            if (text != null) {
-                NotificationCompat.Builder(this@CameraForegroundService, CHANNEL_ID)
-                    .setContentTitle("iPoint Eye Tracking Active")
-                    .setContentText(text)
-                    .setSmallIcon(android.R.drawable.ic_dialog_info)
-                    .setOngoing(true)
-                    .setPriority(NotificationCompat.PRIORITY_LOW)
-                    .build()
-                    .also { notificationManager?.notify(NOTIFICATION_ID, it) }
-            }
-        })
+        val pendingIntent = PendingIntent.getActivity(
+            this,
+            0,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        
+        val iconRes = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            android.R.drawable.ic_lock_power_off
+        } else {
+            android.R.drawable.ic_dialog_info
+        }
+        
+        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle("?? iPoint Active")
+            .setContentText(text ?: "Eye tracking running ? Camera active")
+            .setSmallIcon(iconRes)
+            .setContentIntent(pendingIntent)
+            .setOngoing(true)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setCategory(NotificationCompat.CATEGORY_SERVICE)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setShowWhen(false)
+            .setStyle(NotificationCompat.BigTextStyle()
+                .bigText(text ?: "Eye tracking is active. Camera is running for continuous cursor control."))
+            .build()
+        
+        notificationManager?.notify(NOTIFICATION_ID, notification)
     }
     
     override fun onDestroy() {
