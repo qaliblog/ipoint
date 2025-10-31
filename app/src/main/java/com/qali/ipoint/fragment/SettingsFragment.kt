@@ -552,8 +552,4 @@ class SettingsFragment : Fragment() {
         textView.text = df.format(value)
     }
     
-    override fun onDestroyView() {
-        super.onDestroyView()
-        _binding = null
-    }
 }

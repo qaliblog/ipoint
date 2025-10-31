@@ -15,6 +15,7 @@ import android.view.View
 import android.view.WindowManager
 import android.widget.FrameLayout
 import androidx.core.app.NotificationCompat
+import com.qali.ipoint.PointerView
 
 /**
  * Service that displays a floating pointer overlay on top of all apps
@@ -40,7 +41,7 @@ class PointerOverlayService : Service() {
     }
     
     private var windowManager: WindowManager? = null
-    private var pointerView: View? = null
+    private var pointerView: PointerView? = null
     private var pointerLayout: FrameLayout? = null
     
     override fun onCreate() {
