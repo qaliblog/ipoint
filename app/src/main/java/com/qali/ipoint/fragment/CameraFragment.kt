@@ -133,6 +133,17 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
             hasCheckedAccessibilityOnResume = true
         }
         
+        // Ensure pointer service is running if overlay permission is granted
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (Settings.canDrawOverlays(requireContext())) {
+                try {
+                    startPointerService()
+                } catch (e: Exception) {
+                    LogcatManager.addLog("Failed to start pointer service on resume: ${e.message}", "Camera")
+                }
+            }
+        }
+        
         // Start the FaceLandmarkerHelper again when users come back
         // to the foreground (only if it was closed)
         if (this::faceLandmarkerHelper.isInitialized) {

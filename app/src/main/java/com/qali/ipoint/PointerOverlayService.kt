@@ -111,6 +111,8 @@ class PointerOverlayService : Service() {
                 FrameLayout.LayoutParams.WRAP_CONTENT,
                 FrameLayout.LayoutParams.WRAP_CONTENT
             )
+            // Start hidden until we get valid coordinates
+            visibility = View.GONE
         }
         
         // Create custom pointer view
@@ -136,13 +138,13 @@ class PointerOverlayService : Service() {
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.START
-            x = 0
-            y = 0
+            x = -1000 // Start off-screen until we get valid coordinates
+            y = -1000
         }
         
         try {
             windowManager?.addView(pointerLayout, params)
-            Log.d(TAG, "Pointer overlay added")
+            Log.d(TAG, "Pointer overlay added (initially hidden)")
         } catch (e: Exception) {
             Log.e(TAG, "Error adding pointer overlay: ${e.message}", e)
         }
@@ -152,32 +154,55 @@ class PointerOverlayService : Service() {
         // Only update if valid coordinates (not -1)
         if (x < 0 || y < 0) {
             // Hide pointer if invalid coordinates
-            pointerLayout?.visibility = View.GONE
+            pointerLayout?.let { view ->
+                try {
+                    view.visibility = View.GONE
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error hiding pointer: ${e.message}", e)
+                }
+            }
             return
         }
         
         pointerLayout?.let { view ->
             val params = view.layoutParams as? WindowManager.LayoutParams
             params?.let {
-                it.x = x.toInt() - 30 // Center the pointer (60/2)
-                it.y = y.toInt() - 30
+                val screenX = x.toInt() - 30 // Center the pointer (60/2)
+                val screenY = y.toInt() - 30
+                
+                // Only update if position actually changed (to avoid unnecessary updates)
+                if (it.x == screenX && it.y == screenY && view.visibility == View.VISIBLE) {
+                    return
+                }
+                
+                it.x = screenX
+                it.y = screenY
                 
                 try {
-                    // Ensure view is visible
-                    view.visibility = View.VISIBLE
+                    // Ensure view is visible BEFORE updating layout
+                    if (view.visibility != View.VISIBLE) {
+                        view.visibility = View.VISIBLE
+                    }
+                    
                     // Update position on main thread
                     if (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) {
                         windowManager?.updateViewLayout(view, it)
                     } else {
                         // Post to main thread if we're on background thread
                         android.os.Handler(android.os.Looper.getMainLooper()).post {
-                            windowManager?.updateViewLayout(view, it)
+                            try {
+                                windowManager?.updateViewLayout(view, it)
+                            } catch (e: Exception) {
+                                Log.e(TAG, "Error updating pointer position on main thread: ${e.message}", e)
+                            }
                         }
                     }
                 } catch (e: Exception) {
                     Log.e(TAG, "Error updating pointer position: ${e.message}", e)
                 }
             }
+        } ?: run {
+            Log.w(TAG, "Pointer layout is null, cannot update pointer")
         }
     }
     
