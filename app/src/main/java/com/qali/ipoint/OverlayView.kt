@@ -14,6 +14,12 @@ import kotlin.math.min
 
 class OverlayView(context: Context?, attrs: AttributeSet?) :
     View(context, attrs) {
+    
+    init {
+        // Don't intercept touch events - let them pass through to views behind
+        isClickable = false
+        isFocusable = false
+    }
 
     private var results: FaceLandmarkerResult? = null
     private var leftEyeLinePaint = Paint()

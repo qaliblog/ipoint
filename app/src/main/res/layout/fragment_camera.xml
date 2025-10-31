@@ -13,7 +13,9 @@
     <com.qali.ipoint.OverlayView
         android:id="@+id/overlay"
         android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        android:layout_height="match_parent"
+        android:clickable="false"
+        android:focusable="false" />
 
     <!-- Settings Icon -->
     <ImageButton
@@ -24,6 +26,9 @@
         android:layout_margin="16dp"
         android:background="?attr/selectableItemBackgroundBorderless"
         android:src="@android:drawable/ic_menu_preferences"
-        android:contentDescription="Settings" />
+        android:contentDescription="Settings"
+        android:clickable="true"
+        android:focusable="true"
+        android:elevation="10dp" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
