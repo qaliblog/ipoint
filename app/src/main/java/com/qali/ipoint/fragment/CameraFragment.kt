@@ -185,6 +185,33 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
             }
         } else {
             LogcatManager.addLog("WARNING: Camera not bound in onPause - may need rebinding", "Camera")
+            // Try to rebind camera if wake lock is active
+            fragmentCameraBinding?.root?.postDelayed({
+                if (!isResumed && camera == null && cameraProvider != null) {
+                    LogcatManager.addLog("Attempting to rebind camera in background", "Camera")
+                    try {
+                        val activity = activity
+                        if (activity != null && !activity.isFinishing) {
+                            bindCameraUseCases()
+                        }
+                    } catch (e: Exception) {
+                        LogcatManager.addLog("Failed to rebind camera: ${e.message}", "Camera")
+                    }
+                }
+            }, 1000)
+        }
+        
+        // Verify wake lock is active to keep camera running
+        val foregroundService = CameraForegroundService.getInstance()
+        if (foregroundService == null) {
+            LogcatManager.addLog("WARNING: Camera foreground service not running - restarting", "Camera")
+            try {
+                CameraForegroundService.start(requireContext())
+            } catch (e: Exception) {
+                LogcatManager.addLog("Failed to restart foreground service: ${e.message}", "Camera")
+            }
+        } else {
+            LogcatManager.addLog("Camera foreground service is running - wake lock active", "Camera")
         }
         
         // Ensure pointer service is still updating
