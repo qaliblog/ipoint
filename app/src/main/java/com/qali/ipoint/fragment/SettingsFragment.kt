@@ -3,6 +3,7 @@ package com.qali.ipoint.fragment
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import android.provider.Settings
 import android.view.LayoutInflater
@@ -99,6 +100,9 @@ class SettingsFragment : Fragment() {
         setupMovementMultipliers()
         setupEyePositionEffects()
         setupDistanceMultipliers()
+        setupWakeLockToggle()
+        setupBlinkDetection()
+        setupPermissions()
     }
     
     override fun onResume() {
@@ -593,6 +597,111 @@ class SettingsFragment : Fragment() {
     
     private fun updateValue(textView: android.widget.TextView, value: Float) {
         textView.text = df.format(value)
+    }
+    
+    private fun setupWakeLockToggle() {
+        // Get current wake lock state
+        val isEnabled = com.qali.ipoint.CameraForegroundService.getWakeLockState()
+        binding.wakeLockToggle.isChecked = isEnabled
+        
+        binding.wakeLockToggle.setOnCheckedChangeListener { _, isChecked ->
+            if (isChecked) {
+                // Enable wake lock via service
+                val service = com.qali.ipoint.CameraForegroundService.getInstance()
+                if (service == null) {
+                    // Start service if not running
+                    try {
+                        com.qali.ipoint.CameraForegroundService.start(requireContext())
+                        LogcatManager.addLog("Wake lock service started", "Settings")
+                    } catch (e: Exception) {
+                        LogcatManager.addLog("Failed to start wake lock: ${e.message}", "Settings")
+                        binding.wakeLockToggle.isChecked = false
+                    }
+                } else {
+                    // Toggle wake lock on
+                    if (!service.isWakeLockEnabled) {
+                        com.qali.ipoint.CameraForegroundService.toggleWakeLock()
+                    }
+                    LogcatManager.addLog("Wake lock enabled - MediaPipe will continue processing", "Settings")
+                }
+            } else {
+                // Disable wake lock
+                com.qali.ipoint.CameraForegroundService.toggleWakeLock()
+                LogcatManager.addLog("Wake lock disabled - MediaPipe may pause when device sleeps", "Settings")
+            }
+        }
+    }
+    
+    private fun setupBlinkDetection() {
+        // Setup blink threshold
+        setupValueEditor(
+            binding.blinkThresholdValue,
+            { settingsManager.blinkThreshold },
+            { 
+                settingsManager.blinkThreshold = it
+                // Update blink detector in CameraFragment if possible
+                // We'll need to add a way to update it
+                LogcatManager.addLog("Blink threshold updated: ${df.format(it)}", "Settings")
+            },
+            "Blink Threshold",
+            0.05f
+        )
+        
+        binding.blinkThresholdMinus.setOnClickListener {
+            binding.blinkThresholdValue.clearFocus()
+            val newValue = (settingsManager.blinkThreshold - 0.05f).coerceIn(0.05f, 0.8f)
+            settingsManager.blinkThreshold = newValue
+            updateValue(binding.blinkThresholdValue, newValue)
+            LogcatManager.addLog("Blink threshold: ${df.format(newValue)}", "Settings")
+        }
+        
+        binding.blinkThresholdPlus.setOnClickListener {
+            binding.blinkThresholdValue.clearFocus()
+            val newValue = (settingsManager.blinkThreshold + 0.05f).coerceIn(0.05f, 0.8f)
+            settingsManager.blinkThreshold = newValue
+            updateValue(binding.blinkThresholdValue, newValue)
+            LogcatManager.addLog("Blink threshold: ${df.format(newValue)}", "Settings")
+        }
+        
+        // Setup one eye detection toggle
+        binding.useOneEyeToggle.isChecked = settingsManager.useOneEyeDetection
+        binding.useOneEyeToggle.setOnCheckedChangeListener { _, isChecked ->
+            settingsManager.useOneEyeDetection = isChecked
+            LogcatManager.addLog("One eye detection: ${if (isChecked) "enabled" else "disabled"}", "Settings")
+        }
+    }
+    
+    private fun setupPermissions() {
+        // Open accessibility settings
+        binding.openAccessibilitySettings.setOnClickListener {
+            try {
+                val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                startActivity(intent)
+                LogcatManager.addLog("Opening accessibility settings", "Settings")
+            } catch (e: Exception) {
+                LogcatManager.addLog("Failed to open accessibility settings: ${e.message}", "Settings")
+                Toast.makeText(requireContext(), "Failed to open settings: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+        
+        // Open overlay permission settings
+        binding.openOverlaySettings.setOnClickListener {
+            try {
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                    val intent = Intent(
+                        Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                        android.net.Uri.parse("package:${requireContext().packageName}")
+                    )
+                    startActivity(intent)
+                    LogcatManager.addLog("Opening overlay permission settings", "Settings")
+                } else {
+                    Toast.makeText(requireContext(), "Overlay permission not available on this Android version", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                LogcatManager.addLog("Failed to open overlay settings: ${e.message}", "Settings")
+                Toast.makeText(requireContext(), "Failed to open settings: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
     
 }

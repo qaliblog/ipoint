@@ -12,7 +12,17 @@ import kotlin.math.min
  * Eye tracking utility that calculates eye position based on eye landmarks
  * and maps it to screen coordinates for mouse control
  */
-class EyeTracker(private val displayMetrics: DisplayMetrics) {
+class EyeTracker(
+    private val displayMetrics: DisplayMetrics,
+    private var useOneEye: Boolean = false
+) {
+    
+    /**
+     * Set whether to use one eye (true) or both eyes (false) for detection
+     */
+    fun setUseOneEye(useOneEye: Boolean) {
+        this.useOneEye = useOneEye
+    }
     
     companion object {
         private const val TAG = "EyeTracker"
@@ -138,54 +148,70 @@ class EyeTracker(private val displayMetrics: DisplayMetrics) {
         val leftPupil = getPupilPosition(landmarks, LEFT_EYE_PUPIL_CENTER, LEFT_EYE_LINE_INDICES)
         val rightPupil = getPupilPosition(landmarks, RIGHT_EYE_PUPIL_CENTER, RIGHT_EYE_LINE_INDICES)
         
-        // Calculate combined center from both eyes or use average
-        val combinedCenter = when {
-            leftEyeRegion != null && rightEyeRegion != null -> {
-                // Average of both eye centers
-                PointF(
-                    (leftEyeRegion.center.x + rightEyeRegion.center.x) / 2f,
-                    (leftEyeRegion.center.y + rightEyeRegion.center.y) / 2f
-                )
+        // Calculate combined center - use one eye or both based on settings
+        val combinedCenter = if (useOneEye) {
+            // Use one eye only - prefer right eye (left from user's perspective)
+            rightEyeRegion?.center ?: leftEyeRegion?.center
+        } else {
+            // Use both eyes - average of both
+            when {
+                leftEyeRegion != null && rightEyeRegion != null -> {
+                    // Average of both eye centers
+                    PointF(
+                        (leftEyeRegion.center.x + rightEyeRegion.center.x) / 2f,
+                        (leftEyeRegion.center.y + rightEyeRegion.center.y) / 2f
+                    )
+                }
+                leftEyeRegion != null -> leftEyeRegion.center
+                rightEyeRegion != null -> rightEyeRegion.center
+                else -> null
             }
-            leftEyeRegion != null -> leftEyeRegion.center
-            rightEyeRegion != null -> rightEyeRegion.center
-            else -> null
         }
         
         // If we have pupils, use weighted average (pupils are more accurate)
-        val finalPoint = when {
-            leftPupil != null && rightPupil != null -> {
-                // Weighted average: 60% pupils, 40% eye regions
-                val pupilCenter = PointF(
-                    (leftPupil.x + rightPupil.x) / 2f,
-                    (leftPupil.y + rightPupil.y) / 2f
-                )
-                if (combinedCenter != null) {
-                    PointF(
-                        pupilCenter.x * 0.6f + combinedCenter.x * 0.4f,
-                        pupilCenter.y * 0.6f + combinedCenter.y * 0.4f
+        val finalPoint = if (useOneEye) {
+            // Use one eye only - prefer right pupil (left from user's perspective)
+            rightPupil ?: leftPupil ?: combinedCenter
+        } else {
+            // Use both eyes
+            when {
+                leftPupil != null && rightPupil != null -> {
+                    // Weighted average: 60% pupils, 40% eye regions
+                    val pupilCenter = PointF(
+                        (leftPupil.x + rightPupil.x) / 2f,
+                        (leftPupil.y + rightPupil.y) / 2f
                     )
-                } else {
-                    pupilCenter
+                    if (combinedCenter != null) {
+                        PointF(
+                            pupilCenter.x * 0.6f + combinedCenter.x * 0.4f,
+                            pupilCenter.y * 0.6f + combinedCenter.y * 0.4f
+                        )
+                    } else {
+                        pupilCenter
+                    }
                 }
+                leftPupil != null -> leftPupil
+                rightPupil != null -> rightPupil
+                else -> combinedCenter
             }
-            leftPupil != null -> leftPupil
-            rightPupil != null -> rightPupil
-            else -> combinedCenter
         }
         
         // Calculate eye area (larger area = closer to screen, smaller = farther)
-        // We'll use the average area of both eyes, inverted so 0 = closest (biggest), higher = farther (smaller)
-        val eyeArea: Float = when {
-            leftEyeRegion != null && rightEyeRegion != null -> {
-                val avgArea = (leftEyeRegion.width * leftEyeRegion.height + rightEyeRegion.width * rightEyeRegion.height) / 2f
-                // Invert: use max possible area as reference (we'll normalize to 0-1 range)
-                // For now, return the area itself (bigger = closer)
-                avgArea
+        // Use one eye or both based on settings
+        val eyeArea: Float = if (useOneEye) {
+            // Use one eye only - prefer right eye
+            (rightEyeRegion?.let { it.width * it.height } ?: leftEyeRegion?.let { it.width * it.height }) ?: 0f
+        } else {
+            // Use both eyes - average area
+            when {
+                leftEyeRegion != null && rightEyeRegion != null -> {
+                    val avgArea = (leftEyeRegion.width * leftEyeRegion.height + rightEyeRegion.width * rightEyeRegion.height) / 2f
+                    avgArea
+                }
+                leftEyeRegion != null -> leftEyeRegion.width * leftEyeRegion.height
+                rightEyeRegion != null -> rightEyeRegion.width * rightEyeRegion.height
+                else -> 0f
             }
-            leftEyeRegion != null -> leftEyeRegion.width * leftEyeRegion.height
-            rightEyeRegion != null -> rightEyeRegion.width * rightEyeRegion.height
-            else -> 0f
         }
         
         // Calculate distance metric: 0 for biggest area (closest), increases as area decreases

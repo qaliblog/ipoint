@@ -48,6 +48,16 @@ class SettingsManager(context: Context) {
         get() = prefs.getFloat(KEY_DISTANCE_Y_MULTIPLIER, 0f)
         set(value) = prefs.edit().putFloat(KEY_DISTANCE_Y_MULTIPLIER, value).apply()
     
+    // Blink detection threshold (0.0-1.0, default 0.3 = 30% decrease)
+    var blinkThreshold: Float
+        get() = prefs.getFloat(KEY_BLINK_THRESHOLD, 0.3f)
+        set(value) = prefs.edit().putFloat(KEY_BLINK_THRESHOLD, value.coerceIn(0.05f, 0.8f)).apply()
+    
+    // Use one eye for detection (true) or both eyes (false)
+    var useOneEyeDetection: Boolean
+        get() = prefs.getBoolean(KEY_USE_ONE_EYE, false)
+        set(value) = prefs.edit().putBoolean(KEY_USE_ONE_EYE, value).apply()
+    
     companion object {
         private const val PREFS_NAME = "ipoint_settings"
         
@@ -59,5 +69,7 @@ class SettingsManager(context: Context) {
         private const val KEY_EYE_POSITION_Y_MULTIPLIER = "eye_position_y_multiplier"
         private const val KEY_DISTANCE_X_MULTIPLIER = "distance_x_multiplier"
         private const val KEY_DISTANCE_Y_MULTIPLIER = "distance_y_multiplier"
+        private const val KEY_BLINK_THRESHOLD = "blink_threshold"
+        private const val KEY_USE_ONE_EYE = "use_one_eye"
     }
 }

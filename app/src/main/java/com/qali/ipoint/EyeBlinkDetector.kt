@@ -41,7 +41,7 @@ class EyeBlinkDetector {
         
         // Calculate relative change from baseline
         val relativeArea = if (baselineEyeArea > 0) eyeArea / baselineEyeArea else 1f
-        val isCurrentlyClosed = relativeArea < (1f - BLINK_THRESHOLD_DECREASE)
+        val isCurrentlyClosed = relativeArea < (1f - blinkThreshold)
         
         // Update baseline slowly (adaptive)
         baselineEyeArea = baselineEyeArea * 0.95f + eyeArea * 0.05f
@@ -79,7 +79,7 @@ class EyeBlinkDetector {
                     val decreaseAmount = 1f - closeRatio
                     val increaseAmount = openRatio - closeRatio
                     
-                    if (decreaseAmount >= BLINK_THRESHOLD_DECREASE && 
+                    if (decreaseAmount >= blinkThreshold && 
                         increaseAmount >= BLINK_THRESHOLD_INCREASE) {
                         
                         lastClickTime = currentTime

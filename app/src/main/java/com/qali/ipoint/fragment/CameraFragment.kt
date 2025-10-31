@@ -277,8 +277,8 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
         settingsManager = SettingsManager(requireContext())
         trackingCalculator = TrackingCalculator(settingsManager, displayMetrics)
         
-        // Initialize blink detector for click functionality
-        eyeBlinkDetector = EyeBlinkDetector()
+        // Initialize blink detector for click functionality with threshold from settings
+        eyeBlinkDetector = EyeBlinkDetector(settingsManager.blinkThreshold)
         
         // Set EyeTracker in OverlayView
         fragmentCameraBinding.overlay.setEyeTracker(eyeTracker)
@@ -653,7 +653,15 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
         if (faceLandmarksList.isNotEmpty()) {
             // Track eyes and control mouse
             val landmarks = faceLandmarksList[0] // Use first face
+            
+            // Update eye tracker settings
+            eyeTracker.setUseOneEye(settingsManager.useOneEyeDetection)
+            
             val trackingResult = eyeTracker.trackEyes(landmarks)
+            
+            // Update blink detector threshold if settings changed
+            val currentThreshold = settingsManager.blinkThreshold
+            eyeBlinkDetector.setBlinkThreshold(currentThreshold)
             
             // Detect blink for click functionality
             val blinkDetected = eyeBlinkDetector.processEyeArea(trackingResult.eyeArea)

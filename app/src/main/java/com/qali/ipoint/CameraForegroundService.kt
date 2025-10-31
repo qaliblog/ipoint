@@ -43,11 +43,20 @@ class CameraForegroundService : Service() {
             val intent = Intent(context, CameraForegroundService::class.java)
             context.stopService(intent)
         }
+        
+        fun getWakeLockState(): Boolean {
+            return instance?.isWakeLockEnabled ?: false
+        }
+        
+        fun toggleWakeLock() {
+            instance?.toggleWakeLock()
+        }
     }
     
     private var wakeLock: PowerManager.WakeLock? = null
     private var notificationManager: NotificationManager? = null
-    private var isWakeLockEnabled = true
+    var isWakeLockEnabled = true
+        private set
     
     override fun onCreate() {
         super.onCreate()

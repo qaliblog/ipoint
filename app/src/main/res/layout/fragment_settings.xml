@@ -461,6 +461,219 @@
                 android:layout_marginStart="4dp" />
         </LinearLayout>
 
+        <!-- Wake Lock Toggle -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Wake Lock"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="8dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:padding="8dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Keep Camera Active in Background"
+                android:textSize="14sp" />
+
+            <androidx.appcompat.widget.Switch
+                android:id="@+id/wake_lock_toggle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
+        </LinearLayout>
+
+        <!-- Blink Detection Settings -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Blink Detection"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="8dp" />
+
+        <!-- Blink Threshold -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:padding="8dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Blink Threshold"
+                android:textSize="14sp" />
+
+            <EditText
+                android:id="@+id/blink_threshold_value"
+                android:layout_width="80dp"
+                android:layout_height="wrap_content"
+                android:text="0.3"
+                android:textSize="14sp"
+                android:inputType="numberDecimal|numberSigned"
+                android:minWidth="80dp"
+                android:gravity="center"
+                android:padding="8dp"
+                android:background="@android:drawable/edit_text"
+                android:selectAllOnFocus="true" />
+
+            <Button
+                android:id="@+id/blink_threshold_minus"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:text="-"
+                android:layout_marginStart="8dp" />
+
+            <Button
+                android:id="@+id/blink_threshold_plus"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:text="+"
+                android:layout_marginStart="4dp" />
+        </LinearLayout>
+
+        <!-- Use One Eye Detection -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:padding="8dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Use One Eye Detection"
+                android:textSize="14sp" />
+
+            <androidx.appcompat.widget.Switch
+                android:id="@+id/use_one_eye_toggle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
+        </LinearLayout>
+
+        <!-- Instructions and Permissions -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Setup Instructions"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:layout_marginTop="24dp"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="For iPoint to work properly, you need to enable the following permissions:"
+            android:textSize="14sp"
+            android:padding="8dp" />
+
+        <!-- Accessibility Service -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="8dp"
+            android:layout_marginTop="8dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="1. Accessibility Service (Required for mouse control)"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Allows iPoint to move the mouse cursor and perform clicks."
+                android:textSize="12sp"
+                android:layout_marginTop="4dp" />
+
+            <Button
+                android:id="@+id/open_accessibility_settings"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Open Accessibility Settings"
+                android:layout_marginTop="8dp" />
+        </LinearLayout>
+
+        <!-- Overlay Permission -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="8dp"
+            android:layout_marginTop="8dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="2. Display Over Other Apps (Required for pointer display)"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Allows iPoint to display the cursor overlay on top of all apps."
+                android:textSize="12sp"
+                android:layout_marginTop="4dp" />
+
+            <Button
+                android:id="@+id/open_overlay_settings"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Open Overlay Permission Settings"
+                android:layout_marginTop="8dp" />
+        </LinearLayout>
+
+        <!-- Notification Permission -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="8dp"
+            android:layout_marginTop="8dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="3. Notifications (Required for background operation)"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Allows iPoint to show status notifications and keep camera active in background."
+                android:textSize="12sp"
+                android:layout_marginTop="4dp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Note: Enable this in Android Settings > Apps > iPoint > Notifications"
+                android:textSize="11sp"
+                android:textStyle="italic"
+                android:textColor="#666666"
+                android:layout_marginTop="4dp" />
+        </LinearLayout>
+
     </LinearLayout>
-    </ScrollView>
+    </androidx.core.widget.NestedScrollView>
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
