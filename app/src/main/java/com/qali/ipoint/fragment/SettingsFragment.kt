@@ -93,12 +93,14 @@ class SettingsFragment : Fragment() {
             val newValue = (settingsManager.xMovementMultiplier - 0.1f).coerceAtLeast(0.1f)
             settingsManager.xMovementMultiplier = newValue
             updateValue(binding.xMovementValue, newValue)
+            LogcatManager.addLog("X Movement Multiplier: ${df.format(newValue)}", "Settings")
         }
         
         binding.xMovementPlus.setOnClickListener {
             val newValue = settingsManager.xMovementMultiplier + 0.1f
             settingsManager.xMovementMultiplier = newValue
             updateValue(binding.xMovementValue, newValue)
+            LogcatManager.addLog("X Movement Multiplier: ${df.format(newValue)}", "Settings")
         }
         
         updateValue(binding.yMovementValue, settingsManager.yMovementMultiplier)
@@ -107,12 +109,14 @@ class SettingsFragment : Fragment() {
             val newValue = (settingsManager.yMovementMultiplier - 0.1f).coerceAtLeast(0.1f)
             settingsManager.yMovementMultiplier = newValue
             updateValue(binding.yMovementValue, newValue)
+            LogcatManager.addLog("Y Movement Multiplier: ${df.format(newValue)}", "Settings")
         }
         
         binding.yMovementPlus.setOnClickListener {
             val newValue = settingsManager.yMovementMultiplier + 0.1f
             settingsManager.yMovementMultiplier = newValue
             updateValue(binding.yMovementValue, newValue)
+            LogcatManager.addLog("Y Movement Multiplier: ${df.format(newValue)}", "Settings")
         }
     }
     
