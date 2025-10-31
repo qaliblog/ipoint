@@ -176,12 +176,26 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
         // Check if camera is still bound
         if (camera != null) {
             LogcatManager.addLog("Camera still bound in onPause - should continue running", "Camera")
+            // Force camera to stay active by keeping analyzer running
+            imageAnalyzer?.let {
+                LogcatManager.addLog("ImageAnalyzer still active: ${it.targetAspectRatio}", "Camera")
+            }
         } else {
             LogcatManager.addLog("WARNING: Camera not bound in onPause - may need rebinding", "Camera")
         }
         
         // Ensure pointer service is still updating
         LogcatManager.addLog("Pointer overlay should continue updating in background", "Camera")
+        
+        // Schedule a check to see if frames are still coming after a delay
+        fragmentCameraBinding?.root?.postDelayed({
+            if (!isResumed) {
+                LogcatManager.addLog("Background check: Fragment still paused, checking if camera frames are coming", "Camera")
+                if (camera == null) {
+                    LogcatManager.addLog("WARNING: Camera became null after pause - may need rebinding", "Camera")
+                }
+            }
+        }, 5000)
     }
 
     override fun onDestroyView() {

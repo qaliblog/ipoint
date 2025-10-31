@@ -123,16 +123,39 @@ class SettingsFragment : Fragment() {
             }
             
             binding.copyLogcat.setOnClickListener {
+                // Ensure we're on main thread and fragment is still attached
+                if (!isAdded || context == null) {
+                    Toast.makeText(context, "Cannot copy: Fragment not attached", Toast.LENGTH_SHORT).show()
+                    return@setOnClickListener
+                }
+                
                 try {
-                    val clipboard = requireContext().getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                    // Get log text first
                     val logText = LogcatManager.getLogText()
-                    val clip = ClipData.newPlainText("Logcat", logText)
-                    clipboard.setPrimaryClip(clip)
-                    Toast.makeText(requireContext(), "Logcat copied to clipboard", Toast.LENGTH_SHORT).show()
-                    LogcatManager.addLog("Logcat copied to clipboard", "Settings")
+                    
+                    // Ensure we run clipboard operation on main thread
+                    binding.root.post {
+                        try {
+                            val clipboard = requireContext().getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+                            if (clipboard == null) {
+                                Toast.makeText(requireContext(), "Clipboard service unavailable", Toast.LENGTH_SHORT).show()
+                                return@post
+                            }
+                            
+                            val clip = ClipData.newPlainText("iPoint Logcat", logText)
+                            clipboard.setPrimaryClip(clip)
+                            Toast.makeText(requireContext(), "Logcat copied to clipboard", Toast.LENGTH_SHORT).show()
+                            LogcatManager.addLog("Logcat copied to clipboard (${logText.length} chars)", "Settings")
+                        } catch (e: Exception) {
+                            LogcatManager.addLog("Error copying logcat: ${e.message}", "Settings")
+                            android.util.Log.e("SettingsFragment", "Clipboard error", e)
+                            Toast.makeText(requireContext(), "Failed to copy: ${e.message}", Toast.LENGTH_SHORT).show()
+                        }
+                    }
                 } catch (e: Exception) {
-                    LogcatManager.addLog("Error copying logcat: ${e.message}", "Settings")
-                    Toast.makeText(requireContext(), "Failed to copy: ${e.message}", Toast.LENGTH_SHORT).show()
+                    LogcatManager.addLog("Error getting log text: ${e.message}", "Settings")
+                    android.util.Log.e("SettingsFragment", "Get log text error", e)
+                    Toast.makeText(requireContext(), "Failed to get logs: ${e.message}", Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -410,17 +433,22 @@ class SettingsFragment : Fragment() {
                 isUserEditing = true
                 CameraFragment.setCursorMovementEnabled(false)
                 reEnableRunnable?.let { handler.removeCallbacks(it) }
+                // Immediately cancel any pending re-enable
+                reEnableRunnable = null
             }
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
                 isUserEditing = true
                 CameraFragment.setCursorMovementEnabled(false)
                 reEnableRunnable?.let { handler.removeCallbacks(it) }
+                // Immediately cancel any pending re-enable
+                reEnableRunnable = null
             }
             override fun afterTextChanged(s: Editable?) {
                 isUserEditing = true
                 CameraFragment.setCursorMovementEnabled(false)
                 reEnableRunnable?.let { handler.removeCallbacks(it) }
-                // Schedule delayed re-enable after user stops typing
+                // Don't schedule re-enable immediately - wait for user to stop typing
+                // Reset the timer every time text changes
                 scheduleReEnableCursor()
             }
         })
