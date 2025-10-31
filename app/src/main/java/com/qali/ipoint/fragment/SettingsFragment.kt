@@ -193,15 +193,15 @@ class SettingsFragment : Fragment() {
         
         setupValueEditor(binding.eyePosYEffectValue,
             { settingsManager.eyePositionYEffect },
-            { settingsManager.eyePositionYEffect = it.coerceAtLeast(0f) },
+            { settingsManager.eyePositionYEffect = it },
             "Eye Position Y Range Effect",
             0.1f)
         
         binding.eyePosYEffectMinus.setOnClickListener {
-            val newValue = (settingsManager.eyePositionYEffect - 0.1f).coerceAtLeast(0f)
+            val newValue = settingsManager.eyePositionYEffect - 0.1f
             settingsManager.eyePositionYEffect = newValue
             updateValue(binding.eyePosYEffectValue, newValue)
-            LogcatManager.addLog("Eye Position Y Effect: ${df.format(newValue)} (0 = no effect)", "Settings")
+            LogcatManager.addLog("Eye Position Y Effect: ${df.format(newValue)} (0 = no effect, negative reverses)", "Settings")
         }
         
         binding.eyePosYEffectPlus.setOnClickListener {
@@ -282,13 +282,18 @@ class SettingsFragment : Fragment() {
         // Set initial value
         updateValue(editText, getValue())
         
-        // Handle manual input
+        // Track if we should allow updates (prevent interference while typing)
+        var isUserEditing = false
+        
+        // Handle manual input - only process when user explicitly finishes
         editText.setOnEditorActionListener { _, actionId, _ ->
             if (actionId == EditorInfo.IME_ACTION_DONE || actionId == EditorInfo.IME_ACTION_NEXT) {
+                isUserEditing = false
                 try {
                     val inputValue = editText.text.toString().toFloatOrNull()
                     if (inputValue != null) {
                         setValue(inputValue)
+                        updateValue(editText, inputValue) // Format the display
                         LogcatManager.addLog("$settingName: ${df.format(inputValue)}", "Settings")
                     } else {
                         // Invalid input, restore previous value
@@ -298,7 +303,7 @@ class SettingsFragment : Fragment() {
                     updateValue(editText, getValue())
                     LogcatManager.addLog("Invalid value for $settingName, restored", "Settings")
                 }
-                // Hide keyboard
+                // Hide keyboard only when explicitly done
                 editText.clearFocus()
                 true
             } else {
@@ -306,28 +311,57 @@ class SettingsFragment : Fragment() {
             }
         }
         
-        // Update when focus is lost
+        // Track when user starts/finishes editing
         editText.setOnFocusChangeListener { _, hasFocus ->
-            if (!hasFocus) {
-                try {
-                    val inputValue = editText.text.toString().toFloatOrNull()
-                    if (inputValue != null) {
-                        setValue(inputValue)
-                        LogcatManager.addLog("$settingName: ${df.format(inputValue)}", "Settings")
-                    } else {
+            if (hasFocus) {
+                isUserEditing = true
+                // Select all text when focused for easy editing
+                editText.post { editText.selectAll() }
+            } else {
+                // Only update when focus is lost AND user was editing
+                if (isUserEditing) {
+                    isUserEditing = false
+                    try {
+                        val inputValue = editText.text.toString().toFloatOrNull()
+                        if (inputValue != null) {
+                            setValue(inputValue)
+                            updateValue(editText, inputValue) // Format the display
+                            LogcatManager.addLog("$settingName: ${df.format(inputValue)}", "Settings")
+                        } else {
+                            // Invalid input, restore previous value
+                            updateValue(editText, getValue())
+                        }
+                    } catch (e: Exception) {
                         updateValue(editText, getValue())
                     }
-                } catch (e: Exception) {
-                    updateValue(editText, getValue())
                 }
             }
         }
+        
+        // Also handle text changes to track editing state
+        editText.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {
+                isUserEditing = true
+            }
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                isUserEditing = true
+            }
+            override fun afterTextChanged(s: Editable?) {
+                isUserEditing = true
+            }
+        })
     }
     
     private fun updateValue(editText: EditText, value: Float) {
         // Only update if not currently being edited by user
-        if (!editText.isFocused) {
-            editText.setText(df.format(value))
+        // This prevents interference while user is typing
+        if (!editText.isFocused || editText.text.toString().isEmpty()) {
+            val currentText = editText.text.toString()
+            val newText = df.format(value)
+            // Only update if different to avoid cursor jumping
+            if (currentText != newText) {
+                editText.setText(newText)
+            }
         }
     }
     

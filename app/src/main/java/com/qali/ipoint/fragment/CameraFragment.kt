@@ -139,6 +139,7 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
         isSettingsOpening = false
         // Keep camera running in background for continuous pointer updates
         // Don't stop the face landmarker - let it continue processing
+        // Camera is bound to activity lifecycle, so it will continue running
         if(this::faceLandmarkerHelper.isInitialized) {
             viewModel.setMaxFaces(faceLandmarkerHelper.maxNumFaces)
             viewModel.setMinFaceDetectionConfidence(faceLandmarkerHelper.minFaceDetectionConfidence)
@@ -148,6 +149,9 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
             
             LogcatManager.addLog("App paused but keeping camera active for background tracking", "Camera")
         }
+        
+        // Ensure pointer service is still updating
+        LogcatManager.addLog("Pointer overlay should continue updating in background", "Camera")
     }
 
     override fun onDestroyView() {
