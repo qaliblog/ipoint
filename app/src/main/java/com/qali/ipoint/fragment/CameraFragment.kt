@@ -101,6 +101,8 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
     private lateinit var settingsManager: SettingsManager
     private lateinit var trackingCalculator: TrackingCalculator
     private var isMouseControlEnabled = false
+    private var hasCheckedAccessibilityOnResume = false
+    private var isSettingsOpening = false
 
     override fun onResume() {
         super.onResume()
@@ -113,8 +115,11 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
             return
         }
 
-        // Re-check accessibility service status
-        checkAccessibilityPermission()
+        // Re-check accessibility service status (but don't show prompt if already checked)
+        if (!hasCheckedAccessibilityOnResume) {
+            checkAccessibilityPermission(showPrompt = false) // Don't auto-open settings on resume
+            hasCheckedAccessibilityOnResume = true
+        }
         
         // Start the FaceLandmarkerHelper again when users come back
         // to the foreground (only if it was closed)
@@ -125,6 +130,23 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
                     LogcatManager.addLog("FaceLandmarkerHelper restarted", "Camera")
                 }
             }
+        }
+    }
+    
+    override fun onPause() {
+        super.onPause()
+        hasCheckedAccessibilityOnResume = false
+        isSettingsOpening = false
+        // Keep camera running in background for continuous pointer updates
+        // Don't stop the face landmarker - let it continue processing
+        if(this::faceLandmarkerHelper.isInitialized) {
+            viewModel.setMaxFaces(faceLandmarkerHelper.maxNumFaces)
+            viewModel.setMinFaceDetectionConfidence(faceLandmarkerHelper.minFaceDetectionConfidence)
+            viewModel.setMinFaceTrackingConfidence(faceLandmarkerHelper.minFaceTrackingConfidence)
+            viewModel.setMinFacePresenceConfidence(faceLandmarkerHelper.minFacePresenceConfidence)
+            viewModel.setDelegate(faceLandmarkerHelper.currentDelegate)
+            
+            LogcatManager.addLog("App paused but keeping camera active for background tracking", "Camera")
         }
     }
 
@@ -182,6 +204,12 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
 
         // Setup settings button - use FragmentManager directly instead of Navigation Component
         fragmentCameraBinding.settingsButton.setOnClickListener {
+            // Prevent multiple rapid clicks
+            if (isSettingsOpening) {
+                LogcatManager.addLog("Settings opening already in progress, ignoring click", "Camera")
+                return@setOnClickListener
+            }
+            
             Log.e(TAG, "=== SETTINGS BUTTON CLICKED ===")
             LogcatManager.addLog("=== Settings button clicked ===", "Camera")
             
@@ -189,14 +217,25 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
                 val activity = requireActivity()
                 val fragmentManager = activity.supportFragmentManager
                 
-                // Check if settings fragment is already showing
+                // Check if settings fragment is already showing or in backstack
                 val existingFragment = fragmentManager.findFragmentByTag("SettingsFragment")
-                if (existingFragment != null && existingFragment.isVisible) {
-                    LogcatManager.addLog("Settings already open, closing...", "Camera")
-                    fragmentManager.popBackStack("SettingsFragment", androidx.fragment.app.FragmentManager.POP_BACK_STACK_INCLUSIVE)
-                    return@setOnClickListener
+                if (existingFragment != null) {
+                    if (existingFragment.isVisible) {
+                        LogcatManager.addLog("Settings already visible, closing...", "Camera")
+                        fragmentManager.popBackStack("SettingsFragment", androidx.fragment.app.FragmentManager.POP_BACK_STACK_INCLUSIVE)
+                        return@setOnClickListener
+                    } else {
+                        // Fragment exists but not visible - make it visible
+                        fragmentManager.beginTransaction()
+                            .show(existingFragment)
+                            .addToBackStack("SettingsFragment")
+                            .commit()
+                        LogcatManager.addLog("Showing existing SettingsFragment", "Camera")
+                        return@setOnClickListener
+                    }
                 }
                 
+                isSettingsOpening = true
                 LogcatManager.addLog("Opening SettingsFragment using FragmentTransaction...", "Camera")
                 
                 // Create and show SettingsFragment directly
@@ -207,12 +246,18 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
                 // We'll add it on top, not replace
                 transaction.add(R.id.fragment_container, settingsFragment, "SettingsFragment")
                 transaction.addToBackStack("SettingsFragment")
-                transaction.commit()
+                transaction.commitAllowingStateLoss() // Use commitAllowingStateLoss to prevent IllegalStateException
                 
                 LogcatManager.addLog("SettingsFragment transaction committed successfully!", "Camera")
                 Log.e(TAG, "SettingsFragment transaction committed")
                 
+                // Reset flag after a short delay
+                fragmentCameraBinding.settingsButton.postDelayed({
+                    isSettingsOpening = false
+                }, 500)
+                
             } catch (e: Exception) {
+                isSettingsOpening = false
                 LogcatManager.addLog("Failed to open settings: ${e.message}", "Camera")
                 Log.e(TAG, "Error opening settings", e)
                 e.printStackTrace()
@@ -280,19 +325,30 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
         LogcatManager.addLog("Pointer overlay service started", "Camera")
     }
     
-    private fun checkAccessibilityPermission() {
+    private fun checkAccessibilityPermission(showPrompt: Boolean = true) {
+        // First check if service instance is available (most reliable check)
+        val serviceInstance = MouseControlService.getInstance()
+        if (serviceInstance != null) {
+            LogcatManager.addLog("MouseControlService instance found - service is running", "Camera")
+            isMouseControlEnabled = true
+            return
+        }
+        
+        // Fallback to checking enabled services list
         val isEnabled = isAccessibilityServiceEnabled()
         if (!isEnabled) {
-            LogcatManager.addLog("Accessibility service not enabled - requesting permission", "Camera")
-            // Only show toast and open settings if we're in foreground and user is interacting
-            if (isResumed && isAdded) {
+            LogcatManager.addLog("Accessibility service not enabled", "Camera")
+            isMouseControlEnabled = false
+            
+            // Only show prompt if explicitly requested (not on resume)
+            if (showPrompt && isResumed && isAdded) {
                 Toast.makeText(requireContext(), "Please enable accessibility service for mouse control", Toast.LENGTH_LONG).show()
                 
                 // Open accessibility settings
                 val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
                 startActivity(intent)
+                LogcatManager.addLog("Opened accessibility settings", "Camera")
             }
-            isMouseControlEnabled = false
         } else {
             LogcatManager.addLog("Accessibility service is enabled and ready", "Camera")
             isMouseControlEnabled = true
