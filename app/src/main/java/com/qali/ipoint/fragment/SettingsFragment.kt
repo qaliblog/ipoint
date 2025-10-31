@@ -118,10 +118,10 @@ class SettingsFragment : Fragment() {
             0.1f)
         
         binding.xMovementMinus.setOnClickListener {
-            val newValue = (settingsManager.xMovementMultiplier - 0.1f).coerceAtLeast(0.1f)
+            val newValue = settingsManager.xMovementMultiplier - 0.1f
             settingsManager.xMovementMultiplier = newValue
             updateValue(binding.xMovementValue, newValue)
-            LogcatManager.addLog("X Movement Multiplier: ${df.format(newValue)}", "Settings")
+            LogcatManager.addLog("X Movement Multiplier: ${df.format(newValue)} (negative reverses direction)", "Settings")
         }
         
         binding.xMovementPlus.setOnClickListener {
@@ -138,10 +138,10 @@ class SettingsFragment : Fragment() {
             0.1f)
         
         binding.yMovementMinus.setOnClickListener {
-            val newValue = (settingsManager.yMovementMultiplier - 0.1f).coerceAtLeast(0.1f)
+            val newValue = settingsManager.yMovementMultiplier - 0.1f
             settingsManager.yMovementMultiplier = newValue
             updateValue(binding.yMovementValue, newValue)
-            LogcatManager.addLog("Y Movement Multiplier: ${df.format(newValue)}", "Settings")
+            LogcatManager.addLog("Y Movement Multiplier: ${df.format(newValue)} (negative reverses direction)", "Settings")
         }
         
         binding.yMovementPlus.setOnClickListener {
@@ -155,15 +155,15 @@ class SettingsFragment : Fragment() {
     private fun setupEyePositionEffects() {
         setupValueEditor(binding.eyePosXEffectValue,
             { settingsManager.eyePositionXEffect },
-            { settingsManager.eyePositionXEffect = it.coerceAtLeast(0f) },
+            { settingsManager.eyePositionXEffect = it },
             "Eye Position X Range Effect",
             0.1f)
         
         binding.eyePosXEffectMinus.setOnClickListener {
-            val newValue = (settingsManager.eyePositionXEffect - 0.1f).coerceAtLeast(0f)
+            val newValue = settingsManager.eyePositionXEffect - 0.1f
             settingsManager.eyePositionXEffect = newValue
             updateValue(binding.eyePosXEffectValue, newValue)
-            LogcatManager.addLog("Eye Position X Effect: ${df.format(newValue)} (0 = no effect)", "Settings")
+            LogcatManager.addLog("Eye Position X Effect: ${df.format(newValue)} (0 = no effect, negative reverses)", "Settings")
         }
         
         binding.eyePosXEffectPlus.setOnClickListener {

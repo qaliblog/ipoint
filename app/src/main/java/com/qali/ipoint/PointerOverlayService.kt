@@ -151,6 +151,8 @@ class PointerOverlayService : Service() {
     fun updatePointer(x: Float, y: Float) {
         // Only update if valid coordinates (not -1)
         if (x < 0 || y < 0) {
+            // Hide pointer if invalid coordinates
+            pointerLayout?.visibility = View.GONE
             return
         }
         
@@ -161,7 +163,17 @@ class PointerOverlayService : Service() {
                 it.y = y.toInt() - 30
                 
                 try {
-                    windowManager?.updateViewLayout(view, it)
+                    // Ensure view is visible
+                    view.visibility = View.VISIBLE
+                    // Update position on main thread
+                    if (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) {
+                        windowManager?.updateViewLayout(view, it)
+                    } else {
+                        // Post to main thread if we're on background thread
+                        android.os.Handler(android.os.Looper.getMainLooper()).post {
+                            windowManager?.updateViewLayout(view, it)
+                        }
+                    }
                 } catch (e: Exception) {
                     Log.e(TAG, "Error updating pointer position: ${e.message}", e)
                 }
