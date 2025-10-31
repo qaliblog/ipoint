@@ -40,8 +40,17 @@ object LogcatManager {
     }
     
     fun getLogText(): String {
-        synchronized(logBuffer) {
-            return logBuffer.joinToString("\n")
+        return try {
+            synchronized(logBuffer) {
+                if (logBuffer.isEmpty()) {
+                    "Waiting for logs..."
+                } else {
+                    logBuffer.joinToString("\n")
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("LogcatManager", "Error getting log text: ${e.message}", e)
+            "Error reading logs: ${e.message}"
         }
     }
     
@@ -49,8 +58,12 @@ object LogcatManager {
         synchronized(listeners) {
             listeners.add(listener)
         }
-        // Immediately send current log
-        listener(getLogText())
+        // Immediately send current log (with error handling)
+        try {
+            listener(getLogText())
+        } catch (e: Exception) {
+            Log.e("LogcatManager", "Error in listener: ${e.message}", e)
+        }
     }
     
     fun unregisterListener(listener: (String) -> Unit) {
@@ -60,11 +73,21 @@ object LogcatManager {
     }
     
     fun clear() {
-        synchronized(logBuffer) {
-            logBuffer.clear()
-        }
-        synchronized(listeners) {
-            listeners.forEach { it("") }
+        try {
+            synchronized(logBuffer) {
+                logBuffer.clear()
+            }
+            synchronized(listeners) {
+                listeners.forEach { listener ->
+                    try {
+                        listener("")
+                    } catch (e: Exception) {
+                        Log.e("LogcatManager", "Error clearing logs in listener: ${e.message}", e)
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("LogcatManager", "Error clearing logs: ${e.message}", e)
         }
     }
 }

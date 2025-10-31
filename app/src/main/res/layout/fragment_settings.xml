@@ -64,12 +64,28 @@
             </androidx.core.widget.NestedScrollView>
         </FrameLayout>
 
-        <Button
-            android:id="@+id/toggle_logcat"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Show Logcat"
-            android:layout_marginBottom="16dp" />
+            android:orientation="horizontal"
+            android:layout_marginBottom="16dp">
+            
+            <Button
+                android:id="@+id/toggle_logcat"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Show Logcat"
+                android:layout_marginEnd="8dp" />
+                
+            <Button
+                android:id="@+id/copy_logcat"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Copy All"
+                android:visibility="gone" />
+        </LinearLayout>
 
         <!-- Movement Multipliers -->
         <TextView

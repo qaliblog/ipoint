@@ -1,5 +1,8 @@
 package com.qali.ipoint.fragment
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.os.Bundle
 import android.provider.Settings
 import android.view.LayoutInflater
@@ -93,19 +96,43 @@ class SettingsFragment : Fragment() {
     private fun setupLogcat() {
         // Set initial log text - check binding first
         _binding?.let { binding ->
-            binding.logcatText.text = LogcatManager.getLogText()
+            try {
+                binding.logcatText.text = LogcatManager.getLogText()
+            } catch (e: Exception) {
+                LogcatManager.addLog("Error setting initial logcat text: ${e.message}", "Settings")
+                binding.logcatText.text = "Error loading logs: ${e.message}"
+            }
             
             binding.toggleLogcat.setOnClickListener {
                 isLogcatVisible = !isLogcatVisible
                 binding.logcatContainer.visibility = if (isLogcatVisible) View.VISIBLE else View.GONE
+                binding.copyLogcat.visibility = if (isLogcatVisible) View.VISIBLE else View.GONE
                 binding.toggleLogcat.text = if (isLogcatVisible) "Hide Logcat" else "Show Logcat"
                 
                 if (isLogcatVisible) {
                     // Refresh log when showing
-                    binding.logcatText.text = LogcatManager.getLogText()
-                    binding.logcatScroll.post {
-                        binding.logcatScroll.fullScroll(android.view.View.FOCUS_DOWN)
+                    try {
+                        binding.logcatText.text = LogcatManager.getLogText()
+                        binding.logcatScroll.post {
+                            binding.logcatScroll.fullScroll(android.view.View.FOCUS_DOWN)
+                        }
+                    } catch (e: Exception) {
+                        LogcatManager.addLog("Error refreshing logcat: ${e.message}", "Settings")
                     }
+                }
+            }
+            
+            binding.copyLogcat.setOnClickListener {
+                try {
+                    val clipboard = requireContext().getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                    val logText = LogcatManager.getLogText()
+                    val clip = ClipData.newPlainText("Logcat", logText)
+                    clipboard.setPrimaryClip(clip)
+                    Toast.makeText(requireContext(), "Logcat copied to clipboard", Toast.LENGTH_SHORT).show()
+                    LogcatManager.addLog("Logcat copied to clipboard", "Settings")
+                } catch (e: Exception) {
+                    LogcatManager.addLog("Error copying logcat: ${e.message}", "Settings")
+                    Toast.makeText(requireContext(), "Failed to copy: ${e.message}", Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -308,11 +335,14 @@ class SettingsFragment : Fragment() {
                     if (!anyFocused) {
                         CameraFragment.setCursorMovementEnabled(true)
                         LogcatManager.addLog("Cursor movement re-enabled after typing", "Settings")
+                    } else {
+                        // If still focused, schedule again
+                        scheduleReEnableCursor()
                     }
                 }
             }
-            // Wait 1 second after typing stops before re-enabling cursor
-            handler.postDelayed(reEnableRunnable!!, 1000)
+            // Wait 3 seconds after typing stops before re-enabling cursor (longer delay to prevent cursor jumping)
+            handler.postDelayed(reEnableRunnable!!, 3000)
         }
         
         // Handle manual input - only process when user explicitly finishes

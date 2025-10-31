@@ -222,65 +222,74 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
         fragmentCameraBinding.overlay.setEyeTracker(eyeTracker)
 
         // Setup settings button - use FragmentManager directly instead of Navigation Component
-        fragmentCameraBinding.settingsButton.setOnClickListener {
-            // Prevent multiple rapid clicks
-            if (isSettingsOpening) {
-                LogcatManager.addLog("Settings opening already in progress, ignoring click", "Camera")
-                return@setOnClickListener
-            }
-            
-            Log.e(TAG, "=== SETTINGS BUTTON CLICKED ===")
-            LogcatManager.addLog("=== Settings button clicked ===", "Camera")
-            
-            try {
-                val activity = requireActivity()
-                val fragmentManager = activity.supportFragmentManager
-                
-                // Check if settings fragment is already showing or in backstack
-                val existingFragment = fragmentManager.findFragmentByTag("SettingsFragment")
-                if (existingFragment != null) {
-                    if (existingFragment.isVisible) {
-                        LogcatManager.addLog("Settings already visible, closing...", "Camera")
-                        fragmentManager.popBackStack("SettingsFragment", androidx.fragment.app.FragmentManager.POP_BACK_STACK_INCLUSIVE)
-                        return@setOnClickListener
-                    } else {
-                        // Fragment exists but not visible - make it visible
-                        fragmentManager.beginTransaction()
-                            .show(existingFragment)
-                            .addToBackStack("SettingsFragment")
-                            .commit()
-                        LogcatManager.addLog("Showing existing SettingsFragment", "Camera")
-                        return@setOnClickListener
-                    }
+        // Delay setup slightly to ensure fragment is fully ready
+        fragmentCameraBinding.settingsButton.post {
+            fragmentCameraBinding.settingsButton.setOnClickListener {
+                // Prevent multiple rapid clicks
+                if (isSettingsOpening) {
+                    LogcatManager.addLog("Settings opening already in progress, ignoring click", "Camera")
+                    return@setOnClickListener
                 }
                 
-                isSettingsOpening = true
-                LogcatManager.addLog("Opening SettingsFragment using FragmentTransaction...", "Camera")
+                // Ensure fragment is still attached
+                if (!isAdded || !isResumed) {
+                    LogcatManager.addLog("Fragment not ready, ignoring settings click", "Camera")
+                    return@setOnClickListener
+                }
                 
-                // Create and show SettingsFragment directly
-                val settingsFragment = com.qali.ipoint.fragment.SettingsFragment()
-                val transaction = fragmentManager.beginTransaction()
+                Log.e(TAG, "=== SETTINGS BUTTON CLICKED ===")
+                LogcatManager.addLog("=== Settings button clicked ===", "Camera")
                 
-                // Add to the fragment_container (which contains the NavHostFragment)
-                // We'll add it on top, not replace
-                transaction.add(R.id.fragment_container, settingsFragment, "SettingsFragment")
-                transaction.addToBackStack("SettingsFragment")
-                transaction.commitAllowingStateLoss() // Use commitAllowingStateLoss to prevent IllegalStateException
-                
-                LogcatManager.addLog("SettingsFragment transaction committed successfully!", "Camera")
-                Log.e(TAG, "SettingsFragment transaction committed")
-                
-                // Reset flag after a short delay
-                fragmentCameraBinding.settingsButton.postDelayed({
+                try {
+                    val activity = requireActivity()
+                    val fragmentManager = activity.supportFragmentManager
+                    
+                    // Check if settings fragment is already showing or in backstack
+                    val existingFragment = fragmentManager.findFragmentByTag("SettingsFragment")
+                    if (existingFragment != null) {
+                        if (existingFragment.isVisible) {
+                            LogcatManager.addLog("Settings already visible, closing...", "Camera")
+                            fragmentManager.popBackStack("SettingsFragment", androidx.fragment.app.FragmentManager.POP_BACK_STACK_INCLUSIVE)
+                            return@setOnClickListener
+                        } else {
+                            // Fragment exists but not visible - make it visible
+                            fragmentManager.beginTransaction()
+                                .show(existingFragment)
+                                .addToBackStack("SettingsFragment")
+                                .commitAllowingStateLoss()
+                            LogcatManager.addLog("Showing existing SettingsFragment", "Camera")
+                            return@setOnClickListener
+                        }
+                    }
+                    
+                    isSettingsOpening = true
+                    LogcatManager.addLog("Opening SettingsFragment using FragmentTransaction...", "Camera")
+                    
+                    // Create and show SettingsFragment directly
+                    val settingsFragment = com.qali.ipoint.fragment.SettingsFragment()
+                    val transaction = fragmentManager.beginTransaction()
+                    
+                    // Add to the fragment_container (which contains the NavHostFragment)
+                    // We'll add it on top, not replace
+                    transaction.add(R.id.fragment_container, settingsFragment, "SettingsFragment")
+                    transaction.addToBackStack("SettingsFragment")
+                    transaction.commitAllowingStateLoss() // Use commitAllowingStateLoss to prevent IllegalStateException
+                    
+                    LogcatManager.addLog("SettingsFragment transaction committed successfully!", "Camera")
+                    Log.e(TAG, "SettingsFragment transaction committed")
+                    
+                    // Reset flag after a short delay
+                    fragmentCameraBinding.settingsButton.postDelayed({
+                        isSettingsOpening = false
+                    }, 500)
+                    
+                } catch (e: Exception) {
                     isSettingsOpening = false
-                }, 500)
-                
-            } catch (e: Exception) {
-                isSettingsOpening = false
-                LogcatManager.addLog("Failed to open settings: ${e.message}", "Camera")
-                Log.e(TAG, "Error opening settings", e)
-                e.printStackTrace()
-                Toast.makeText(requireContext(), "Failed to open settings: ${e.message}", Toast.LENGTH_SHORT).show()
+                    LogcatManager.addLog("Failed to open settings: ${e.message}", "Camera")
+                    Log.e(TAG, "Error opening settings", e)
+                    e.printStackTrace()
+                    Toast.makeText(requireContext(), "Failed to open settings: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
             }
         }
         
@@ -486,8 +495,19 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
         // The image analyzer runs on background thread and is bound to activity lifecycle
         try {
             // Log periodically to confirm we're still getting frames
-            if (System.currentTimeMillis() % 5000 < 100) { // Log every 5 seconds
-                LogcatManager.addLog("Processing camera frame (background check)", "Camera")
+            val now = System.currentTimeMillis()
+            if (now % 3000 < 100) { // Log every 3 seconds to track if frames are coming
+                val activity = activity
+                val isPaused = if (activity != null) {
+                    try {
+                        activity.isFinishing || !isResumed
+                    } catch (e: Exception) {
+                        false
+                    }
+                } else {
+                    true
+                }
+                LogcatManager.addLog("Processing camera frame - Activity paused: $isPaused", "Camera")
             }
             
             faceLandmarkerHelper.detectLiveStream(

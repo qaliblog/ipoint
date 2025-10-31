@@ -39,12 +39,15 @@ class MainActivity : AppCompatActivity() {
         )
         
         // Acquire wake lock to keep camera running in background
+        // Use SCREEN_DIM_WAKE_LOCK which keeps CPU and screen on (better for camera)
         val powerManager = getSystemService(POWER_SERVICE) as PowerManager
         wakeLock = powerManager.newWakeLock(
-            PowerManager.PARTIAL_WAKE_LOCK,
+            PowerManager.PARTIAL_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEUP,
             "iPoint::CameraWakeLock"
         ).apply {
-            acquire(10 * 60 * 1000L /*10 minutes*/) // Keep for 10 minutes, then renew if needed
+            // Use a longer timeout and set reference counted to keep it alive
+            setReferenceCounted(false)
+            acquire()
         }
         
         activityMainBinding = ActivityMainBinding.inflate(layoutInflater)
@@ -56,7 +59,7 @@ class MainActivity : AppCompatActivity() {
         // Renew wake lock if needed
         wakeLock?.let {
             if (!it.isHeld) {
-                it.acquire(10 * 60 * 1000L)
+                it.acquire()
             }
         }
     }
