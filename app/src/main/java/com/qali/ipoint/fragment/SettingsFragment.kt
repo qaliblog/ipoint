@@ -111,6 +111,12 @@ class SettingsFragment : Fragment() {
         // Disable cursor movement when settings are visible
         CameraFragment.setCursorMovementEnabled(false)
         
+        // Update wake lock toggle state in case it changed
+        _binding?.let {
+            val isEnabled = com.qali.ipoint.CameraForegroundService.getWakeLockState()
+            it.wakeLockToggle.isChecked = isEnabled
+        }
+        
         // Register logcat listener only if view is created
         try {
             if (_binding != null && isAdded) {
