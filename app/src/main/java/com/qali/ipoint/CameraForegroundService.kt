@@ -59,11 +59,24 @@ class CameraForegroundService : Service() {
             "iPoint::CameraForegroundWakeLock"
         ).apply {
             setReferenceCounted(false)
-            acquire()
+            try {
+                acquire()
+                android.util.Log.d(TAG, "Wake lock acquired successfully")
+            } catch (e: Exception) {
+                android.util.Log.e(TAG, "Failed to acquire wake lock: ${e.message}", e)
+            }
         }
         
-        // Start as foreground service
-        startForeground(NOTIFICATION_ID, createNotification())
+        // Start as foreground service - this MUST be called in onCreate
+        try {
+            val notification = createNotification()
+            startForeground(NOTIFICATION_ID, notification)
+            android.util.Log.d(TAG, "Foreground service started with notification")
+        } catch (e: Exception) {
+            android.util.Log.e(TAG, "Failed to start foreground service: ${e.message}", e)
+            // Try to stop self if we can't start foreground
+            stopSelf()
+        }
     }
     
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -120,17 +133,19 @@ class CameraForegroundService : Service() {
         }
         
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("?? iPoint Active")
-            .setContentText("Eye tracking running ? Camera active")
+            .setContentTitle("?? iPoint Active - Wake Lock")
+            .setContentText("Wake lock acquired ? Camera active ? Eye tracking running")
             .setSmallIcon(iconRes)
+            .setLargeIcon(null) // No large icon to keep it compact
             .setContentIntent(pendingIntent)
             .setOngoing(true)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT) // Changed to DEFAULT so it's visible
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setShowWhen(false)
+            .setAutoCancel(false) // Don't auto-cancel
             .setStyle(NotificationCompat.BigTextStyle()
-                .bigText("Eye tracking is active. Camera is running for continuous cursor control."))
+                .bigText("Wake lock is active to keep the camera running.\nEye tracking is active. Camera is running for continuous cursor control."))
             .build()
     }
     
