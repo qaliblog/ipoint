@@ -205,13 +205,13 @@ class CameraForegroundService : Service() {
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setShowWhen(false)
             .setAutoCancel(false) // Don't auto-cancel
-            .setActions(listOf(
+            .addAction(
                 NotificationCompat.Action.Builder(
                     statusIcon,
                     toggleText,
                     togglePendingIntent
                 ).build()
-            ))
+            )
             .setStyle(NotificationCompat.BigTextStyle()
                 .bigText(if (isWakeLockEnabled) {
                     "Wake lock is ACTIVE to keep the camera running.\nMediaPipe landmark detection is active.\nCamera is running for continuous cursor control."
