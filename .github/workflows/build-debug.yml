@@ -28,7 +28,7 @@ jobs:
       run: chmod +x gradlew
       
     - name: Download MediaPipe model assets
-      run: ./gradlew downloadAllTasks
+      run: ./gradlew :app:downloadTaskFile
       
     - name: Build debug APK
       run: ./gradlew assembleDebug
