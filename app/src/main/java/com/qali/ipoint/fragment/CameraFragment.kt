@@ -660,47 +660,52 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
             // Apply all adjustments from settings
             val (adjustedX, adjustedY) = trackingCalculator.calculateAdjustedPosition(trackingResult)
             
-            // ALWAYS update system-wide pointer overlay (works even in background)
-            // This is the critical part - must happen every frame, regardless of app state
-            // Check global flag to see if cursor movement should be enabled
+            // Check global flag to see if cursor movement should be enabled (disabled when settings are open)
             val cursorEnabled = CameraFragment.isCursorMovementEnabled()
             
-            // Always update pointer overlay position (even when cursor movement is disabled for visual feedback)
-            // Only disable mouse control when typing, but keep pointer visible
-            // Update immediately without delays to ensure timely transmission
-            try {
-                PointerOverlayService.updatePointerPosition(adjustedX, adjustedY)
-                // Log periodically to confirm updates are happening (only when paused/background)
-                val now = System.currentTimeMillis()
-                if (now % 5000 < 100 && (!isResumed || activity?.isFinishing == true)) {
-                    LogcatManager.addLog("Pointer updated in background: (${adjustedX.toInt()}, ${adjustedY.toInt()})", "Tracking")
-                }
-            } catch (e: Exception) {
-                // Log but don't crash - service might not be available
-                if (System.currentTimeMillis() % 2000 < 50) { // Log every 2 seconds
-                    Log.e(TAG, "Failed to update pointer overlay: ${e.message}", e)
-                    LogcatManager.addLog("Failed to update pointer: ${e.message}", "Tracking")
-                }
-            }
-            
-            // Also update mouse control immediately if enabled and cursor movement is enabled
-            // This ensures both pointer overlay and mouse control are synchronized
-            
-            // Control mouse if accessibility is enabled AND cursor movement is enabled (don't move mouse when typing)
-            // Update immediately to ensure timely cursor movement
-            if (isMouseControlEnabled && cursorEnabled) {
+            // Only update pointer overlay and mouse control if cursor movement is enabled
+            // When settings are open, completely disable cursor to prevent interference with typing
+            if (cursorEnabled) {
+                // Update system-wide pointer overlay (works even in background)
+                // Update immediately without delays to ensure timely transmission
                 try {
-                    MouseControlService.moveCursor(adjustedX, adjustedY)
+                    PointerOverlayService.updatePointerPosition(adjustedX, adjustedY)
+                    // Log periodically to confirm updates are happening (only when paused/background)
+                    val now = System.currentTimeMillis()
+                    if (now % 5000 < 100 && (!isResumed || activity?.isFinishing == true)) {
+                        LogcatManager.addLog("Pointer updated in background: (${adjustedX.toInt()}, ${adjustedY.toInt()})", "Tracking")
+                    }
                 } catch (e: Exception) {
-                    // Log but don't crash
-                    if (System.currentTimeMillis() % 2000 < 50) {
-                        Log.e(TAG, "Failed to move cursor: ${e.message}", e)
+                    // Log but don't crash - service might not be available
+                    if (System.currentTimeMillis() % 2000 < 50) { // Log every 2 seconds
+                        Log.e(TAG, "Failed to update pointer overlay: ${e.message}", e)
+                        LogcatManager.addLog("Failed to update pointer: ${e.message}", "Tracking")
                     }
                 }
-            } else if (!cursorEnabled) {
+                
+                // Control mouse if accessibility is enabled AND cursor movement is enabled
+                // Update immediately to ensure timely cursor movement
+                if (isMouseControlEnabled) {
+                    try {
+                        MouseControlService.moveCursor(adjustedX, adjustedY)
+                    } catch (e: Exception) {
+                        // Log but don't crash
+                        if (System.currentTimeMillis() % 2000 < 50) {
+                            Log.e(TAG, "Failed to move cursor: ${e.message}", e)
+                        }
+                    }
+                }
+            } else {
+                // Cursor movement is disabled (settings open or user typing)
+                // Hide pointer overlay when disabled
+                try {
+                    PointerOverlayService.updatePointerPosition(-1f, -1f)
+                } catch (e: Exception) {
+                    // Silent fail - service might not be available
+                }
                 // Don't log this too often - only occasionally
                 if (System.currentTimeMillis() % 3000 < 100) {
-                    LogcatManager.addLog("Mouse control disabled (settings open or user typing)", "Tracking")
+                    LogcatManager.addLog("Cursor movement disabled (settings open or user typing)", "Tracking")
                 }
             }
             

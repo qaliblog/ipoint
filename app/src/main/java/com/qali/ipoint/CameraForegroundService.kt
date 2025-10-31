@@ -5,8 +5,10 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
@@ -23,6 +25,7 @@ class CameraForegroundService : Service() {
         private const val TAG = "CameraForegroundService"
         private const val NOTIFICATION_ID = 1001
         private const val CHANNEL_ID = "camera_foreground_channel"
+        const val ACTION_TOGGLE_WAKELOCK = "com.qali.ipoint.TOGGLE_WAKELOCK"
         private var instance: CameraForegroundService? = null
         
         fun getInstance(): CameraForegroundService? = instance
@@ -44,6 +47,8 @@ class CameraForegroundService : Service() {
     
     private var wakeLock: PowerManager.WakeLock? = null
     private var notificationManager: NotificationManager? = null
+    private var isWakeLockEnabled = true
+    private var toggleReceiver: BroadcastReceiver? = null
     
     override fun onCreate() {
         super.onCreate()
@@ -51,6 +56,22 @@ class CameraForegroundService : Service() {
         
         notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         createNotificationChannel()
+        
+        // Register broadcast receiver for wake lock toggle
+        toggleReceiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                if (intent?.action == ACTION_TOGGLE_WAKELOCK) {
+                    toggleWakeLock()
+                }
+            }
+        }
+        val filter = IntentFilter(ACTION_TOGGLE_WAKELOCK)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(toggleReceiver, filter, RECEIVER_EXPORTED)
+        } else {
+            @Suppress("DEPRECATION")
+            registerReceiver(toggleReceiver, filter)
+        }
         
         // Acquire wake lock to keep app running
         val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
@@ -61,9 +82,12 @@ class CameraForegroundService : Service() {
             setReferenceCounted(false)
             try {
                 acquire()
+                isWakeLockEnabled = true
                 android.util.Log.d(TAG, "Wake lock acquired successfully")
+                com.qali.ipoint.LogcatManager.addLog("Wake lock acquired - MediaPipe will continue processing", "Service")
             } catch (e: Exception) {
                 android.util.Log.e(TAG, "Failed to acquire wake lock: ${e.message}", e)
+                isWakeLockEnabled = false
             }
         }
         
@@ -80,6 +104,11 @@ class CameraForegroundService : Service() {
     }
     
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // Handle wake lock toggle action from notification
+        if (intent?.action == ACTION_TOGGLE_WAKELOCK) {
+            toggleWakeLock()
+        }
+        
         // Ensure we're still in foreground
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             try {
@@ -89,29 +118,33 @@ class CameraForegroundService : Service() {
             }
         }
         
-        // Renew wake lock if needed - this is critical to keep camera active
-        wakeLock?.let {
-            if (!it.isHeld) {
-                try {
-                    it.acquire()
-                    android.util.Log.d(TAG, "Wake lock renewed in onStartCommand")
-                } catch (e: Exception) {
-                    android.util.Log.e(TAG, "Failed to renew wake lock: ${e.message}", e)
+        // Renew wake lock if enabled and needed - this is critical to keep camera active
+        if (isWakeLockEnabled) {
+            wakeLock?.let {
+                if (!it.isHeld) {
+                    try {
+                        it.acquire()
+                        android.util.Log.d(TAG, "Wake lock renewed in onStartCommand")
+                    } catch (e: Exception) {
+                        android.util.Log.e(TAG, "Failed to renew wake lock: ${e.message}", e)
+                    }
                 }
-            }
-        } ?: run {
-            // Wake lock is null - recreate it
-            val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
-            wakeLock = powerManager.newWakeLock(
-                PowerManager.PARTIAL_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEUP,
-                "iPoint::CameraForegroundWakeLock"
-            ).apply {
-                setReferenceCounted(false)
-                try {
-                    acquire()
-                    android.util.Log.d(TAG, "Wake lock recreated and acquired")
-                } catch (e: Exception) {
-                    android.util.Log.e(TAG, "Failed to acquire wake lock: ${e.message}", e)
+            } ?: run {
+                // Wake lock is null - recreate it
+                val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+                wakeLock = powerManager.newWakeLock(
+                    PowerManager.PARTIAL_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEUP,
+                    "iPoint::CameraForegroundWakeLock"
+                ).apply {
+                    setReferenceCounted(false)
+                    try {
+                        acquire()
+                        isWakeLockEnabled = true
+                        android.util.Log.d(TAG, "Wake lock recreated and acquired")
+                    } catch (e: Exception) {
+                        android.util.Log.e(TAG, "Failed to acquire wake lock: ${e.message}", e)
+                        isWakeLockEnabled = false
+                    }
                 }
             }
         }
@@ -149,6 +182,17 @@ class CameraForegroundService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         
+        // Create toggle action for wake lock
+        val toggleIntent = Intent(ACTION_TOGGLE_WAKELOCK).apply {
+            setPackage(packageName)
+        }
+        val togglePendingIntent = PendingIntent.getBroadcast(
+            this,
+            1,
+            toggleIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        
         // Use a better icon - battery/wake lock icon
         val iconRes = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             android.R.drawable.ic_lock_power_off
@@ -156,9 +200,17 @@ class CameraForegroundService : Service() {
             android.R.drawable.ic_dialog_info
         }
         
+        val wakeLockStatus = if (isWakeLockEnabled) "ON" else "OFF"
+        val toggleText = if (isWakeLockEnabled) "Disable Wake Lock" else "Enable Wake Lock"
+        val statusIcon = if (isWakeLockEnabled) {
+            android.R.drawable.ic_lock_lock
+        } else {
+            android.R.drawable.ic_lock_power_off
+        }
+        
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("?? iPoint Active - Wake Lock")
-            .setContentText("Wake lock acquired ? Camera active ? Eye tracking running")
+            .setContentTitle("?? iPoint Active - Wake Lock: $wakeLockStatus")
+            .setContentText(if (isWakeLockEnabled) "Wake lock ON ? Camera active ? MediaPipe running" else "Wake lock OFF ? Camera may pause")
             .setSmallIcon(iconRes)
             .setLargeIcon(null) // No large icon to keep it compact
             .setContentIntent(pendingIntent)
@@ -168,50 +220,96 @@ class CameraForegroundService : Service() {
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setShowWhen(false)
             .setAutoCancel(false) // Don't auto-cancel
+            .addAction(
+                statusIcon,
+                toggleText,
+                togglePendingIntent
+            )
             .setStyle(NotificationCompat.BigTextStyle()
-                .bigText("Wake lock is active to keep the camera running.\nEye tracking is active. Camera is running for continuous cursor control."))
+                .bigText(if (isWakeLockEnabled) {
+                    "Wake lock is ACTIVE to keep the camera running.\nMediaPipe landmark detection is active.\nCamera is running for continuous cursor control."
+                } else {
+                    "Wake lock is DISABLED.\nCamera may pause when device sleeps.\nTap to enable wake lock."
+                }))
             .build()
     }
     
-    fun updateNotification(text: String? = null) {
-        val intent = Intent(this, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-        }
-        val pendingIntent = PendingIntent.getActivity(
-            this,
-            0,
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
+    private fun toggleWakeLock() {
+        isWakeLockEnabled = !isWakeLockEnabled
         
-        val iconRes = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            android.R.drawable.ic_lock_power_off
+        if (isWakeLockEnabled) {
+            // Acquire wake lock
+            wakeLock?.let {
+                if (!it.isHeld) {
+                    try {
+                        it.acquire()
+                        android.util.Log.d(TAG, "Wake lock toggled ON")
+                        com.qali.ipoint.LogcatManager.addLog("Wake lock enabled - MediaPipe will continue processing", "Service")
+                    } catch (e: Exception) {
+                        android.util.Log.e(TAG, "Failed to acquire wake lock: ${e.message}", e)
+                        isWakeLockEnabled = false
+                    }
+                }
+            } ?: run {
+                // Wake lock is null - recreate it
+                val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+                wakeLock = powerManager.newWakeLock(
+                    PowerManager.PARTIAL_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEUP,
+                    "iPoint::CameraForegroundWakeLock"
+                ).apply {
+                    setReferenceCounted(false)
+                    try {
+                        acquire()
+                        android.util.Log.d(TAG, "Wake lock created and acquired")
+                        com.qali.ipoint.LogcatManager.addLog("Wake lock enabled - MediaPipe will continue processing", "Service")
+                    } catch (e: Exception) {
+                        android.util.Log.e(TAG, "Failed to acquire wake lock: ${e.message}", e)
+                        isWakeLockEnabled = false
+                    }
+                }
+            }
         } else {
-            android.R.drawable.ic_dialog_info
+            // Release wake lock
+            wakeLock?.let {
+                if (it.isHeld) {
+                    try {
+                        it.release()
+                        android.util.Log.d(TAG, "Wake lock toggled OFF")
+                        com.qali.ipoint.LogcatManager.addLog("Wake lock disabled - MediaPipe may pause when device sleeps", "Service")
+                    } catch (e: Exception) {
+                        android.util.Log.e(TAG, "Failed to release wake lock: ${e.message}", e)
+                    }
+                }
+            }
         }
         
-        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("?? iPoint Active - Wake Lock")
-            .setContentText(text ?: "Wake lock acquired ? Camera active ? Eye tracking running")
-            .setSmallIcon(iconRes)
-            .setLargeIcon(null)
-            .setContentIntent(pendingIntent)
-            .setOngoing(true)
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-            .setCategory(NotificationCompat.CATEGORY_SERVICE)
-            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-            .setShowWhen(false)
-            .setAutoCancel(false)
-            .setStyle(NotificationCompat.BigTextStyle()
-                .bigText(text ?: "Wake lock is active to keep the camera running.\nEye tracking is active. Camera is running for continuous cursor control."))
-            .build()
-        
+        // Update notification to reflect new state
+        try {
+            startForeground(NOTIFICATION_ID, createNotification())
+        } catch (e: Exception) {
+            android.util.Log.e(TAG, "Failed to update notification: ${e.message}", e)
+        }
+    }
+    
+    fun updateNotification(text: String? = null) {
+        // Reuse createNotification but update text
+        val notification = createNotification()
         notificationManager?.notify(NOTIFICATION_ID, notification)
     }
     
     override fun onDestroy() {
         super.onDestroy()
         instance = null
+        
+        // Unregister receiver
+        toggleReceiver?.let {
+            try {
+                unregisterReceiver(it)
+            } catch (e: Exception) {
+                android.util.Log.e(TAG, "Failed to unregister receiver: ${e.message}", e)
+            }
+        }
+        toggleReceiver = null
         
         wakeLock?.let {
             if (it.isHeld) {
