@@ -28,9 +28,10 @@ class EyeTracker(private val displayMetrics: DisplayMetrics) {
         // Right eye contour (left eye from user's view)  
         private val RIGHT_EYE_LINE_INDICES = listOf(362, 382, 381, 380, 374, 373, 390, 249, 263, 466, 388, 387, 386, 385, 384, 398)
         
-        // Pupil centers (iris landmarks)
-        private const val LEFT_EYE_PUPIL = 468 // Iris center for left eye (if available, else use 33+7)/2
-        private const val RIGHT_EYE_PUPIL = 473 // Iris center for right eye (if available, else use 362+263)/2
+        // Pupil centers - MediaPipe has 468 landmarks (0-467)
+        // Use approximate center indices or calculate from eye region
+        private const val LEFT_EYE_PUPIL_CENTER = 468 // Will be calculated from eye region if not available
+        private const val RIGHT_EYE_PUPIL_CENTER = 473 // Will be calculated from eye region if not available
     }
     
     data class EyeRegion(
@@ -130,8 +131,9 @@ class EyeTracker(private val displayMetrics: DisplayMetrics) {
         val leftEyeRegion = calculateEyeRegion(landmarks, LEFT_EYE_LINE_INDICES)
         val rightEyeRegion = calculateEyeRegion(landmarks, RIGHT_EYE_LINE_INDICES)
         
-        val leftPupil = getPupilPosition(landmarks, LEFT_EYE_PUPIL, LEFT_EYE_LINE_INDICES)
-        val rightPupil = getPupilPosition(landmarks, RIGHT_EYE_PUPIL, RIGHT_EYE_LINE_INDICES)
+        // Calculate pupil positions from eye regions (MediaPipe doesn't have specific pupil landmarks)
+        val leftPupil = getPupilPosition(landmarks, LEFT_EYE_PUPIL_CENTER, LEFT_EYE_LINE_INDICES)
+        val rightPupil = getPupilPosition(landmarks, RIGHT_EYE_PUPIL_CENTER, RIGHT_EYE_LINE_INDICES)
         
         // Calculate combined center from both eyes or use average
         val combinedCenter = when {
@@ -195,14 +197,12 @@ class EyeTracker(private val displayMetrics: DisplayMetrics) {
      * Get eye landmark indices for drawing
      */
     fun getLeftEyeIndices(): List<Int> {
-        // Return line indices + pupil if available
-        val pupil = if (LEFT_EYE_PUPIL <= 467) listOf(LEFT_EYE_PUPIL) else emptyList()
-        return LEFT_EYE_LINE_INDICES + pupil
+        // Return line indices only (pupil is calculated, not a specific landmark)
+        return LEFT_EYE_LINE_INDICES
     }
     
     fun getRightEyeIndices(): List<Int> {
-        // Return line indices + pupil if available
-        val pupil = if (RIGHT_EYE_PUPIL <= 467) listOf(RIGHT_EYE_PUPIL) else emptyList()
-        return RIGHT_EYE_LINE_INDICES + pupil
+        // Return line indices only (pupil is calculated, not a specific landmark)
+        return RIGHT_EYE_LINE_INDICES
     }
 }

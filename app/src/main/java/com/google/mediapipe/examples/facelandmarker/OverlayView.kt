@@ -138,25 +138,25 @@ class OverlayView(context: Context?, attrs: AttributeSet?) :
         val rightEyeIndices = tracker.getRightEyeIndices()
         
         // Draw left eye (green) - eye line
-        drawEyeLine(canvas, faceLandmarks, leftEyeIndices.dropLast(1), offsetX, offsetY, leftEyeLinePaint)
+        drawEyeLine(canvas, faceLandmarks, leftEyeIndices, offsetX, offsetY, leftEyeLinePaint)
         
-        // Draw left eye pupil
-        val leftPupil = faceLandmarks.getOrNull(leftEyeIndices.last())
-        leftPupil?.let { pupil ->
-            val x = pupil.x() * imageWidth * scaleFactor + offsetX
-            val y = pupil.y() * imageHeight * scaleFactor + offsetY
-            canvas.drawCircle(x, y, PUPIL_RADIUS, leftEyePupilPaint)
+        // Draw left eye pupil (calculated center)
+        val leftEyePoints = leftEyeIndices.mapNotNull { faceLandmarks.getOrNull(it) }
+        if (leftEyePoints.isNotEmpty()) {
+            val centerX = leftEyePoints.map { it.x() }.average().toFloat() * imageWidth * scaleFactor + offsetX
+            val centerY = leftEyePoints.map { it.y() }.average().toFloat() * imageHeight * scaleFactor + offsetY
+            canvas.drawCircle(centerX, centerY, PUPIL_RADIUS, leftEyePupilPaint)
         }
         
         // Draw right eye (blue) - eye line
-        drawEyeLine(canvas, faceLandmarks, rightEyeIndices.dropLast(1), offsetX, offsetY, rightEyeLinePaint)
+        drawEyeLine(canvas, faceLandmarks, rightEyeIndices, offsetX, offsetY, rightEyeLinePaint)
         
-        // Draw right eye pupil
-        val rightPupil = faceLandmarks.getOrNull(rightEyeIndices.last())
-        rightPupil?.let { pupil ->
-            val x = pupil.x() * imageWidth * scaleFactor + offsetX
-            val y = pupil.y() * imageHeight * scaleFactor + offsetY
-            canvas.drawCircle(x, y, PUPIL_RADIUS, rightEyePupilPaint)
+        // Draw right eye pupil (calculated center)
+        val rightEyePoints = rightEyeIndices.mapNotNull { faceLandmarks.getOrNull(it) }
+        if (rightEyePoints.isNotEmpty()) {
+            val centerX = rightEyePoints.map { it.x() }.average().toFloat() * imageWidth * scaleFactor + offsetX
+            val centerY = rightEyePoints.map { it.y() }.average().toFloat() * imageHeight * scaleFactor + offsetY
+            canvas.drawCircle(centerX, centerY, PUPIL_RADIUS, rightEyePupilPaint)
         }
     }
     
