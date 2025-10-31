@@ -507,8 +507,7 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
             // ALWAYS update system-wide pointer overlay (works even in background)
             // This is the critical part - must happen every frame, regardless of app state
             // Check global flag to see if cursor movement should be enabled
-            val cursorEnabled = isCursorMovementEnabled()
-            isCursorMovementEnabled = cursorEnabled // Sync local flag
+            val cursorEnabled = CameraFragment.isCursorMovementEnabled()
             
             if (cursorEnabled) {
                 try {
@@ -565,7 +564,7 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
         } else {
             // No face detected - hide pointer (only if cursor movement is enabled)
             // Always hide pointer overlay even if cursor movement disabled
-            if (isCursorMovementEnabled()) {
+            if (CameraFragment.isCursorMovementEnabled()) {
                 PointerOverlayService.updatePointerPosition(-1f, -1f)
             }
             
@@ -581,7 +580,7 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
 
     override fun onEmpty() {
         // Hide pointer overlay (only if cursor movement is enabled)
-        if (isCursorMovementEnabled()) {
+        if (CameraFragment.isCursorMovementEnabled()) {
             PointerOverlayService.updatePointerPosition(-1f, -1f)
         }
         
