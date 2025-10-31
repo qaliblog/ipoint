@@ -74,6 +74,15 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
 
     companion object {
         private const val TAG = "Face Landmarker"
+        private var cursorMovementEnabledGlobal = true
+        
+        fun setCursorMovementEnabled(enabled: Boolean) {
+            cursorMovementEnabledGlobal = enabled
+        }
+        
+        fun isCursorMovementEnabled(): Boolean {
+            return cursorMovementEnabledGlobal
+        }
     }
 
     private var _fragmentCameraBinding: FragmentCameraBinding? = null
@@ -103,24 +112,10 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
     private var isMouseControlEnabled = false
     private var hasCheckedAccessibilityOnResume = false
     private var isSettingsOpening = false
-    private var isCursorMovementEnabled = true // Global flag to disable cursor when typing
-    
-    companion object {
-        private var cursorMovementEnabledGlobal = true
-        
-        fun setCursorMovementEnabled(enabled: Boolean) {
-            cursorMovementEnabledGlobal = enabled
-        }
-        
-        fun isCursorMovementEnabled(): Boolean {
-            return cursorMovementEnabledGlobal
-        }
-    }
 
     override fun onResume() {
         super.onResume()
         // Re-enable cursor movement when fragment resumes
-        isCursorMovementEnabled = true
         setCursorMovementEnabled(true)
         
         // Make sure that all permissions are still present, since the
@@ -585,8 +580,10 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
     }
 
     override fun onEmpty() {
-        // Always update system-wide pointer overlay (works from any thread)
-        PointerOverlayService.updatePointerPosition(-1f, -1f)
+        // Hide pointer overlay (only if cursor movement is enabled)
+        if (isCursorMovementEnabled()) {
+            PointerOverlayService.updatePointerPosition(-1f, -1f)
+        }
         
         // Update UI only if fragment is still active and visible
         if (isResumed && _fragmentCameraBinding != null) {
