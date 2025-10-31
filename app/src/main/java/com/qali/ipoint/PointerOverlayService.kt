@@ -33,6 +33,10 @@ class PointerOverlayService : Service() {
         fun updatePointerPosition(x: Float, y: Float) {
             instance?.updatePointer(x, y)
         }
+        
+        fun indicateClick() {
+            instance?.pointerView?.indicateClick()
+        }
     }
     
     private var windowManager: WindowManager? = null

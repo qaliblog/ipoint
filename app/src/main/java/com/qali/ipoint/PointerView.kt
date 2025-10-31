@@ -11,6 +11,10 @@ import android.view.View
  */
 class PointerView(context: Context) : View(context) {
     
+    private var isClicking = false
+    private var clickEndTime = 0L
+    private val CLICK_COLOR_DURATION_MS = 200L // Show green for 200ms
+    
     private val pointerPaint = Paint().apply {
         color = Color.RED
         strokeWidth = 3f
@@ -31,6 +35,30 @@ class PointerView(context: Context) : View(context) {
         style = Paint.Style.STROKE
         alpha = 128
         isAntiAlias = true
+    }
+    
+    /**
+     * Indicate that a click was detected
+     */
+    fun indicateClick() {
+        isClicking = true
+        clickEndTime = System.currentTimeMillis() + CLICK_COLOR_DURATION_MS
+        updatePaintColors()
+        invalidate()
+        
+        // Reset color after duration
+        postDelayed({
+            isClicking = false
+            updatePaintColors()
+            invalidate()
+        }, CLICK_COLOR_DURATION_MS)
+    }
+    
+    private fun updatePaintColors() {
+        val color = if (isClicking) Color.GREEN else Color.RED
+        pointerPaint.color = color
+        centerPaint.color = color
+        outerPaint.color = color
     }
     
     override fun onDraw(canvas: Canvas) {

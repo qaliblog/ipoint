@@ -52,6 +52,7 @@ import androidx.viewpager2.widget.ViewPager2.SCROLL_STATE_IDLE
 import androidx.viewpager2.widget.ViewPager2.SCROLL_STATE_SETTLING
 import androidx.viewpager2.widget.ViewPager2.ScrollState
 import com.qali.ipoint.CameraForegroundService
+import com.qali.ipoint.EyeBlinkDetector
 import com.qali.ipoint.EyeTracker
 import com.qali.ipoint.FaceLandmarkerHelper
 import com.qali.ipoint.LogcatManager
@@ -110,6 +111,7 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
     private lateinit var eyeTracker: EyeTracker
     private lateinit var settingsManager: SettingsManager
     private lateinit var trackingCalculator: TrackingCalculator
+    private lateinit var eyeBlinkDetector: EyeBlinkDetector
     private var isMouseControlEnabled = false
     private var hasCheckedAccessibilityOnResume = false
     private var isSettingsOpening = false
@@ -235,6 +237,9 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
         // Initialize Settings and Calculator
         settingsManager = SettingsManager(requireContext())
         trackingCalculator = TrackingCalculator(settingsManager, displayMetrics)
+        
+        // Initialize blink detector for click functionality
+        eyeBlinkDetector = EyeBlinkDetector()
         
         // Set EyeTracker in OverlayView
         fragmentCameraBinding.overlay.setEyeTracker(eyeTracker)
@@ -600,6 +605,19 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
             // Track eyes and control mouse
             val landmarks = faceLandmarksList[0] // Use first face
             val trackingResult = eyeTracker.trackEyes(landmarks)
+            
+            // Detect blink for click functionality
+            val blinkDetected = eyeBlinkDetector.processEyeArea(trackingResult.eyeArea)
+            if (blinkDetected) {
+                // Trigger click
+                try {
+                    MouseControlService.performClick()
+                    PointerOverlayService.indicateClick()
+                    LogcatManager.addLog("Click detected via blink", "Tracking")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to perform click: ${e.message}", e)
+                }
+            }
             
             // Apply all adjustments from settings
             val (adjustedX, adjustedY) = trackingCalculator.calculateAdjustedPosition(trackingResult)
