@@ -1,5 +1,8 @@
 package com.qali.ipoint
 
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.app.Service
 import android.content.Context
 import android.content.Intent
@@ -8,11 +11,10 @@ import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import android.view.Gravity
-import android.view.LayoutInflater
-import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
 import android.widget.FrameLayout
+import androidx.core.app.NotificationCompat
 
 /**
  * Service that displays a floating pointer overlay on top of all apps
@@ -22,6 +24,8 @@ class PointerOverlayService : Service() {
     
     companion object {
         private const val TAG = "PointerOverlayService"
+        private const val NOTIFICATION_ID = 1
+        private const val CHANNEL_ID = "pointer_overlay_channel"
         private var instance: PointerOverlayService? = null
         
         fun getInstance(): PointerOverlayService? = instance
@@ -39,11 +43,43 @@ class PointerOverlayService : Service() {
         super.onCreate()
         instance = this
         
+        // Create notification channel for foreground service
+        createNotificationChannel()
+        
+        // Start as foreground service immediately
+        startForeground(NOTIFICATION_ID, createNotification())
+        
         windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
         
         createPointerView()
         
         Log.d(TAG, "PointerOverlayService created")
+    }
+    
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                CHANNEL_ID,
+                "Pointer Overlay",
+                NotificationManager.IMPORTANCE_LOW
+            ).apply {
+                description = "Displays pointer overlay on screen"
+                setShowBadge(false)
+            }
+            val notificationManager = getSystemService(NotificationManager::class.java)
+            notificationManager.createNotificationChannel(channel)
+        }
+    }
+    
+    private fun createNotification(): Notification {
+        return NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle("iPoint Pointer")
+            .setContentText("Pointer overlay is active")
+            .setSmallIcon(android.R.drawable.ic_menu_mylocation)
+            .setOngoing(true)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setCategory(NotificationCompat.CATEGORY_SERVICE)
+            .build()
     }
     
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -95,6 +131,11 @@ class PointerOverlayService : Service() {
     }
     
     fun updatePointer(x: Float, y: Float) {
+        // Only update if valid coordinates (not -1)
+        if (x < 0 || y < 0) {
+            return
+        }
+        
         pointerLayout?.let { view ->
             val params = view.layoutParams as? WindowManager.LayoutParams
             params?.let {

@@ -59,29 +59,36 @@ class MouseControlService : AccessibilityService() {
      */
     fun performMouseMove(x: Float, y: Float) {
         try {
+            // Check if x and y are valid (not -1)
+            if (x < 0 || y < 0) {
+                return
+            }
+            
             // Smooth the movement
-            val smoothedX = lastX + (x - lastX) * (1 - smoothingFactor)
-            val smoothedY = lastY + (y - lastY) * (1 - smoothingFactor)
+            val smoothedX = if (lastX == 0f && lastY == 0f) x else lastX + (x - lastX) * (1 - smoothingFactor)
+            val smoothedY = if (lastX == 0f && lastY == 0f) y else lastY + (y - lastY) * (1 - smoothingFactor)
             
             lastX = smoothedX
             lastY = smoothedY
             
+            // Create path from current position to new position for smooth movement
+            val path = android.graphics.Path().apply {
+                moveTo(lastX, lastY)
+                lineTo(smoothedX, smoothedY)
+            }
+            
             // Use dispatchGesture for Android 7.0+
-            android.accessibilityservice.GestureDescription.Builder()
+            val gesture = android.accessibilityservice.GestureDescription.Builder()
                 .addStroke(
                     android.accessibilityservice.GestureDescription.StrokeDescription(
-                        android.graphics.Path().apply {
-                            moveTo(smoothedX, smoothedY)
-                            lineTo(smoothedX, smoothedY)
-                        },
+                        path,
                         0,
-                        50 // Short duration
+                        100 // Duration for movement
                     )
                 )
                 .build()
-                .let { gesture ->
-                    dispatchGesture(gesture, null, null)
-                }
+            
+            dispatchGesture(gesture, null, null)
             
         } catch (e: Exception) {
             Log.e(TAG, "Error moving cursor: ${e.message}", e)
@@ -93,6 +100,12 @@ class MouseControlService : AccessibilityService() {
      */
     fun performMouseClick() {
         try {
+            // Check if we have a valid position
+            if (lastX <= 0 || lastY <= 0) {
+                Log.w(TAG, "Cannot perform click: invalid position")
+                return
+            }
+            
             val clickPath = android.graphics.Path().apply {
                 moveTo(lastX, lastY)
                 lineTo(lastX, lastY)

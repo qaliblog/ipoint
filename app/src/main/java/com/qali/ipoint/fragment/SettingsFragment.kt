@@ -35,6 +35,11 @@ class SettingsFragment : Fragment() {
         
         settingsManager = SettingsManager(requireContext())
         
+        // Setup back button
+        binding.backButton.setOnClickListener {
+            requireActivity().onBackPressed()
+        }
+        
         setupLogcat()
         setupMovementMultipliers()
         setupEyePositionEffects()
