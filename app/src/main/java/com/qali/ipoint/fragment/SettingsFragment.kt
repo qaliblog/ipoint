@@ -224,33 +224,101 @@ class SettingsFragment : Fragment() {
     }
     
     private fun setupDistanceMultipliers() {
-        updateValue(binding.distanceXValue, settingsManager.distanceXMultiplier)
+        setupValueEditor(binding.distanceXValue,
+            { settingsManager.distanceXMultiplier },
+            { settingsManager.distanceXMultiplier = it },
+            "Distance X Range Multiplier",
+            0.1f)
         
         binding.distanceXMinus.setOnClickListener {
             val newValue = settingsManager.distanceXMultiplier - 0.1f
             settingsManager.distanceXMultiplier = newValue
             updateValue(binding.distanceXValue, newValue)
+            LogcatManager.addLog("Distance X Multiplier: ${df.format(newValue)} (0 = no effect, negative = reverse)", "Settings")
         }
         
         binding.distanceXPlus.setOnClickListener {
             val newValue = settingsManager.distanceXMultiplier + 0.1f
             settingsManager.distanceXMultiplier = newValue
             updateValue(binding.distanceXValue, newValue)
+            LogcatManager.addLog("Distance X Multiplier: ${df.format(newValue)} (increases X range when far)", "Settings")
         }
         
-        updateValue(binding.distanceYValue, settingsManager.distanceYMultiplier)
+        setupValueEditor(binding.distanceYValue,
+            { settingsManager.distanceYMultiplier },
+            { settingsManager.distanceYMultiplier = it },
+            "Distance Y Range Multiplier",
+            0.1f)
         
         binding.distanceYMinus.setOnClickListener {
             val newValue = settingsManager.distanceYMultiplier - 0.1f
             settingsManager.distanceYMultiplier = newValue
             updateValue(binding.distanceYValue, newValue)
+            LogcatManager.addLog("Distance Y Multiplier: ${df.format(newValue)} (0 = no effect, negative = reverse)", "Settings")
         }
         
         binding.distanceYPlus.setOnClickListener {
             val newValue = settingsManager.distanceYMultiplier + 0.1f
             settingsManager.distanceYMultiplier = newValue
             updateValue(binding.distanceYValue, newValue)
+            LogcatManager.addLog("Distance Y Multiplier: ${df.format(newValue)} (increases Y range when far)", "Settings")
         }
+    }
+    
+    private fun setupValueEditor(
+        editText: EditText,
+        getValue: () -> Float,
+        setValue: (Float) -> Unit,
+        settingName: String,
+        stepSize: Float
+    ) {
+        // Set initial value
+        updateValue(editText, getValue())
+        
+        // Handle manual input
+        editText.setOnEditorActionListener { _, actionId, _ ->
+            if (actionId == EditorInfo.IME_ACTION_DONE || actionId == EditorInfo.IME_ACTION_NEXT) {
+                try {
+                    val inputValue = editText.text.toString().toFloatOrNull()
+                    if (inputValue != null) {
+                        setValue(inputValue)
+                        LogcatManager.addLog("$settingName: ${df.format(inputValue)}", "Settings")
+                    } else {
+                        // Invalid input, restore previous value
+                        updateValue(editText, getValue())
+                    }
+                } catch (e: Exception) {
+                    updateValue(editText, getValue())
+                    LogcatManager.addLog("Invalid value for $settingName, restored", "Settings")
+                }
+                // Hide keyboard
+                editText.clearFocus()
+                true
+            } else {
+                false
+            }
+        }
+        
+        // Update when focus is lost
+        editText.setOnFocusChangeListener { _, hasFocus ->
+            if (!hasFocus) {
+                try {
+                    val inputValue = editText.text.toString().toFloatOrNull()
+                    if (inputValue != null) {
+                        setValue(inputValue)
+                        LogcatManager.addLog("$settingName: ${df.format(inputValue)}", "Settings")
+                    } else {
+                        updateValue(editText, getValue())
+                    }
+                } catch (e: Exception) {
+                    updateValue(editText, getValue())
+                }
+            }
+        }
+    }
+    
+    private fun updateValue(editText: EditText, value: Float) {
+        editText.setText(df.format(value))
     }
     
     private fun updateValue(textView: android.widget.TextView, value: Float) {
