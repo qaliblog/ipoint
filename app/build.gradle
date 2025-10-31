@@ -83,6 +83,9 @@ dependencies {
 
     // CameraX View class
     implementation "androidx.camera:camera-view:$camerax_version"
+    
+    // Process lifecycle for keeping camera active in background
+    implementation 'androidx.lifecycle:lifecycle-process:2.6.2'
 
     // WindowManager
     implementation 'androidx.window:window:1.1.0-alpha03'

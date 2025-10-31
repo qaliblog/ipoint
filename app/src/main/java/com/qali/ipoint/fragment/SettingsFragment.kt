@@ -251,6 +251,8 @@ class SettingsFragment : Fragment() {
             0.1f)
         
         binding.xMovementMinus.setOnClickListener {
+            // Clear focus first to prevent cursor jumping
+            binding.xMovementValue.clearFocus()
             val newValue = settingsManager.xMovementMultiplier - 0.1f
             settingsManager.xMovementMultiplier = newValue
             updateValue(binding.xMovementValue, newValue)
@@ -258,6 +260,8 @@ class SettingsFragment : Fragment() {
         }
         
         binding.xMovementPlus.setOnClickListener {
+            // Clear focus first to prevent cursor jumping
+            binding.xMovementValue.clearFocus()
             val newValue = settingsManager.xMovementMultiplier + 0.1f
             settingsManager.xMovementMultiplier = newValue
             updateValue(binding.xMovementValue, newValue)
@@ -271,6 +275,8 @@ class SettingsFragment : Fragment() {
             0.1f)
         
         binding.yMovementMinus.setOnClickListener {
+            // Clear focus first to prevent cursor jumping
+            binding.yMovementValue.clearFocus()
             val newValue = settingsManager.yMovementMultiplier - 0.1f
             settingsManager.yMovementMultiplier = newValue
             updateValue(binding.yMovementValue, newValue)
@@ -278,6 +284,8 @@ class SettingsFragment : Fragment() {
         }
         
         binding.yMovementPlus.setOnClickListener {
+            // Clear focus first to prevent cursor jumping
+            binding.yMovementValue.clearFocus()
             val newValue = settingsManager.yMovementMultiplier + 0.1f
             settingsManager.yMovementMultiplier = newValue
             updateValue(binding.yMovementValue, newValue)
@@ -293,6 +301,7 @@ class SettingsFragment : Fragment() {
             0.1f)
         
         binding.eyePosXEffectMinus.setOnClickListener {
+            binding.eyePosXEffectValue.clearFocus()
             val newValue = settingsManager.eyePositionXEffect - 0.1f
             settingsManager.eyePositionXEffect = newValue
             updateValue(binding.eyePosXEffectValue, newValue)
@@ -300,6 +309,7 @@ class SettingsFragment : Fragment() {
         }
         
         binding.eyePosXEffectPlus.setOnClickListener {
+            binding.eyePosXEffectValue.clearFocus()
             val newValue = settingsManager.eyePositionXEffect + 0.1f
             settingsManager.eyePositionXEffect = newValue
             updateValue(binding.eyePosXEffectValue, newValue)
@@ -313,12 +323,14 @@ class SettingsFragment : Fragment() {
             0.1f)
         
         binding.eyePosXMultMinus.setOnClickListener {
+            binding.eyePosXMultValue.clearFocus()
             val newValue = settingsManager.eyePositionXMultiplier - 0.1f
             settingsManager.eyePositionXMultiplier = newValue
             updateValue(binding.eyePosXMultValue, newValue)
         }
         
         binding.eyePosXMultPlus.setOnClickListener {
+            binding.eyePosXMultValue.clearFocus()
             val newValue = settingsManager.eyePositionXMultiplier + 0.1f
             settingsManager.eyePositionXMultiplier = newValue
             updateValue(binding.eyePosXMultValue, newValue)
@@ -331,6 +343,7 @@ class SettingsFragment : Fragment() {
             0.1f)
         
         binding.eyePosYEffectMinus.setOnClickListener {
+            binding.eyePosYEffectValue.clearFocus()
             val newValue = settingsManager.eyePositionYEffect - 0.1f
             settingsManager.eyePositionYEffect = newValue
             updateValue(binding.eyePosYEffectValue, newValue)
@@ -338,6 +351,7 @@ class SettingsFragment : Fragment() {
         }
         
         binding.eyePosYEffectPlus.setOnClickListener {
+            binding.eyePosYEffectValue.clearFocus()
             val newValue = settingsManager.eyePositionYEffect + 0.1f
             settingsManager.eyePositionYEffect = newValue
             updateValue(binding.eyePosYEffectValue, newValue)
@@ -351,12 +365,14 @@ class SettingsFragment : Fragment() {
             0.1f)
         
         binding.eyePosYMultMinus.setOnClickListener {
+            binding.eyePosYMultValue.clearFocus()
             val newValue = settingsManager.eyePositionYMultiplier - 0.1f
             settingsManager.eyePositionYMultiplier = newValue
             updateValue(binding.eyePosYMultValue, newValue)
         }
         
         binding.eyePosYMultPlus.setOnClickListener {
+            binding.eyePosYMultValue.clearFocus()
             val newValue = settingsManager.eyePositionYMultiplier + 0.1f
             settingsManager.eyePositionYMultiplier = newValue
             updateValue(binding.eyePosYMultValue, newValue)
@@ -371,6 +387,7 @@ class SettingsFragment : Fragment() {
             0.1f)
         
         binding.distanceXMinus.setOnClickListener {
+            binding.distanceXValue.clearFocus()
             val newValue = settingsManager.distanceXMultiplier - 0.1f
             settingsManager.distanceXMultiplier = newValue
             updateValue(binding.distanceXValue, newValue)
@@ -378,6 +395,7 @@ class SettingsFragment : Fragment() {
         }
         
         binding.distanceXPlus.setOnClickListener {
+            binding.distanceXValue.clearFocus()
             val newValue = settingsManager.distanceXMultiplier + 0.1f
             settingsManager.distanceXMultiplier = newValue
             updateValue(binding.distanceXValue, newValue)
@@ -391,6 +409,7 @@ class SettingsFragment : Fragment() {
             0.1f)
         
         binding.distanceYMinus.setOnClickListener {
+            binding.distanceYValue.clearFocus()
             val newValue = settingsManager.distanceYMultiplier - 0.1f
             settingsManager.distanceYMultiplier = newValue
             updateValue(binding.distanceYValue, newValue)
@@ -398,6 +417,7 @@ class SettingsFragment : Fragment() {
         }
         
         binding.distanceYPlus.setOnClickListener {
+            binding.distanceYValue.clearFocus()
             val newValue = settingsManager.distanceYMultiplier + 0.1f
             settingsManager.distanceYMultiplier = newValue
             updateValue(binding.distanceYValue, newValue)
@@ -536,14 +556,27 @@ class SettingsFragment : Fragment() {
     }
     
     private fun updateValue(editText: EditText, value: Float) {
-        // Only update if not currently being edited by user
-        // This prevents interference while user is typing
-        if (!editText.isFocused || editText.text.toString().isEmpty()) {
-            val currentText = editText.text.toString()
-            val newText = df.format(value)
-            // Only update if different to avoid cursor jumping
-            if (currentText != newText) {
-                editText.setText(newText)
+        // NEVER update the text if the EditText is focused - this causes cursor to jump
+        // Only update when the user is not actively editing
+        if (editText.isFocused) {
+            // User is typing - don't interfere at all
+            return
+        }
+        
+        val currentText = editText.text.toString()
+        val newText = df.format(value)
+        
+        // Only update if different to avoid unnecessary changes
+        if (currentText != newText) {
+            // Save cursor position if there was a selection
+            val selectionStart = editText.selectionStart
+            val selectionEnd = editText.selectionEnd
+            
+            editText.setText(newText)
+            
+            // Restore cursor position if it was valid
+            if (selectionStart >= 0 && selectionStart <= newText.length) {
+                editText.setSelection(selectionStart.coerceAtMost(newText.length))
             }
         }
     }
