@@ -364,7 +364,7 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
                         MouseControlService.moveCursor(adjustedX, adjustedY)
                     }
                     
-                    addLog("Eye tracked: (${adjustedX.toInt()}, ${adjustedY.toInt()}) | Area: ${trackingResult.eyeArea}")
+                    LogcatManager.addLog("Eye tracked: (${adjustedX.toInt()}, ${adjustedY.toInt()}) | Area: ${String.format(Locale.US, "%.4f", trackingResult.eyeArea)} | EyePos: (${String.format(Locale.US, "%.2f", trackingResult.eyePositionX)}, ${String.format(Locale.US, "%.2f", trackingResult.eyePositionY)})", "Tracking")
                 } else {
                     fragmentCameraBinding.overlay.setPointerPosition(-1f, -1f)
                     PointerOverlayService.updatePointerPosition(-1f, -1f)
