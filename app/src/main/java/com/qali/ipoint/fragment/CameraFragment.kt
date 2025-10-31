@@ -585,31 +585,37 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
             // Check global flag to see if cursor movement should be enabled
             val cursorEnabled = CameraFragment.isCursorMovementEnabled()
             
-            if (cursorEnabled) {
+            // Always update pointer overlay position (even when cursor movement is disabled for visual feedback)
+            // Only disable mouse control when typing, but keep pointer visible
+            try {
+                PointerOverlayService.updatePointerPosition(adjustedX, adjustedY)
+                // Log periodically to confirm updates (only when paused/background)
+                val now = System.currentTimeMillis()
+                if (now % 5000 < 100 && (!isResumed || activity?.isFinishing == true)) {
+                    LogcatManager.addLog("Pointer updated in background: (${adjustedX.toInt()}, ${adjustedY.toInt()})", "Tracking")
+                }
+            } catch (e: Exception) {
+                // Log but don't crash - service might not be available
+                if (System.currentTimeMillis() % 2000 < 50) { // Log every 2 seconds
+                    Log.e(TAG, "Failed to update pointer overlay: ${e.message}", e)
+                    LogcatManager.addLog("Failed to update pointer: ${e.message}", "Tracking")
+                }
+            }
+            
+            // Control mouse if accessibility is enabled AND cursor movement is enabled (don't move mouse when typing)
+            if (isMouseControlEnabled && cursorEnabled) {
                 try {
-                    PointerOverlayService.updatePointerPosition(adjustedX, adjustedY)
+                    MouseControlService.moveCursor(adjustedX, adjustedY)
                 } catch (e: Exception) {
-                    // Log but don't crash - service might not be available
-                    if (System.currentTimeMillis() % 2000 < 50) { // Log every 2 seconds
-                        Log.e(TAG, "Failed to update pointer overlay: ${e.message}", e)
+                    // Log but don't crash
+                    if (System.currentTimeMillis() % 2000 < 50) {
+                        Log.e(TAG, "Failed to move cursor: ${e.message}", e)
                     }
                 }
-                
-                // Control mouse if accessibility is enabled (also works in background)
-                if (isMouseControlEnabled) {
-                    try {
-                        MouseControlService.moveCursor(adjustedX, adjustedY)
-                    } catch (e: Exception) {
-                        // Log but don't crash
-                        if (System.currentTimeMillis() % 2000 < 50) {
-                            Log.e(TAG, "Failed to move cursor: ${e.message}", e)
-                        }
-                    }
-                }
-            } else {
-                // Log when cursor is disabled (for debugging)
-                if (System.currentTimeMillis() % 2000 < 50) {
-                    LogcatManager.addLog("Cursor movement disabled (user typing)", "Tracking")
+            } else if (!cursorEnabled) {
+                // Don't log this too often - only occasionally
+                if (System.currentTimeMillis() % 3000 < 100) {
+                    LogcatManager.addLog("Mouse control disabled (user typing)", "Tracking")
                 }
             }
             

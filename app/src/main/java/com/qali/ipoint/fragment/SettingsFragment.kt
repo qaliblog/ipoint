@@ -364,8 +364,8 @@ class SettingsFragment : Fragment() {
                     }
                 }
             }
-            // Wait 3 seconds after typing stops before re-enabling cursor (longer delay to prevent cursor jumping)
-            handler.postDelayed(reEnableRunnable!!, 3000)
+            // Wait 5 seconds after typing stops before re-enabling cursor (longer delay to prevent cursor jumping)
+            handler.postDelayed(reEnableRunnable!!, 5000)
         }
         
         // Handle manual input - only process when user explicitly finishes
