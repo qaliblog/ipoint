@@ -22,6 +22,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.Configuration
+import android.os.Bundle
 import android.provider.Settings
 import android.text.TextUtils
 import android.util.DisplayMetrics
@@ -40,7 +41,6 @@ import androidx.camera.core.ImageProxy
 import androidx.camera.core.Camera
 import androidx.camera.core.AspectRatio
 import androidx.camera.lifecycle.ProcessCameraProvider
-import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.navigation.Navigation
@@ -49,8 +49,10 @@ import androidx.viewpager2.widget.ViewPager2.SCROLL_STATE_DRAGGING
 import androidx.viewpager2.widget.ViewPager2.SCROLL_STATE_IDLE
 import androidx.viewpager2.widget.ViewPager2.SCROLL_STATE_SETTLING
 import androidx.viewpager2.widget.ViewPager2.ScrollState
+import com.qali.ipoint.EyeTracker
 import com.qali.ipoint.FaceLandmarkerHelper
 import com.qali.ipoint.MainViewModel
+import com.qali.ipoint.MouseControlService
 import com.qali.ipoint.R
 import com.qali.ipoint.databinding.FragmentCameraBinding
 import com.google.mediapipe.tasks.vision.core.RunningMode
@@ -214,8 +216,9 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
         activity?.runOnUiThread {
             fragmentCameraBinding.logcatText.text = logBuffer.joinToString("\n")
             // Auto scroll to bottom
-            fragmentCameraBinding.logcatContainer.findViewById<android.widget.ScrollView>(R.id.logcat_scroll)?.post {
-                it.fullScroll(android.view.View.FOCUS_DOWN)
+            val scrollView = fragmentCameraBinding.logcatContainer.findViewById<android.widget.ScrollView>(R.id.logcat_scroll)
+            scrollView?.post {
+                scrollView.fullScroll(android.view.View.FOCUS_DOWN)
             }
         }
         
