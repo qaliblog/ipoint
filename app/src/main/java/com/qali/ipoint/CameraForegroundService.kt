@@ -176,17 +176,6 @@ class CameraForegroundService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         
-        // Create toggle action for wake lock - use getService to send intent directly to service
-        val toggleIntent = Intent(this, CameraForegroundService::class.java).apply {
-            action = ACTION_TOGGLE_WAKELOCK
-        }
-        val togglePendingIntent = PendingIntent.getService(
-            this,
-            1,
-            toggleIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        
         // Use a better icon - battery/wake lock icon
         val iconRes = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             android.R.drawable.ic_lock_power_off
