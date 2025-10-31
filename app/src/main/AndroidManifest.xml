@@ -72,7 +72,7 @@
             android:name=".PointerOverlayService"
             android:enabled="true"
             android:exported="false"
-            android:foregroundServiceType="mediaProjection">
+            android:foregroundServiceType="none">
         </service>
     </application>
 

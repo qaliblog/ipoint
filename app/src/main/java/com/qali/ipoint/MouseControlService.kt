@@ -38,6 +38,10 @@ class MouseControlService : AccessibilityService() {
         super.onServiceConnected()
         instance = this
         Log.d(TAG, "MouseControlService connected")
+        
+        // Reset position on reconnect
+        lastX = 0f
+        lastY = 0f
     }
     
     override fun onDestroy() {

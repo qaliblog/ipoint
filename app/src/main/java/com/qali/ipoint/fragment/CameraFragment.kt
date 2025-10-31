@@ -52,6 +52,7 @@ import androidx.viewpager2.widget.ViewPager2.SCROLL_STATE_SETTLING
 import androidx.viewpager2.widget.ViewPager2.ScrollState
 import com.qali.ipoint.EyeTracker
 import com.qali.ipoint.FaceLandmarkerHelper
+import com.qali.ipoint.LogcatManager
 import com.qali.ipoint.MainViewModel
 import com.qali.ipoint.MouseControlService
 import com.qali.ipoint.PointerOverlayService
@@ -99,8 +100,6 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
     private lateinit var settingsManager: SettingsManager
     private lateinit var trackingCalculator: TrackingCalculator
     private var isMouseControlEnabled = false
-    private val logBuffer = mutableListOf<String>()
-    private val maxLogLines = 50
 
     override fun onResume() {
         super.onResume()
@@ -183,6 +182,9 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
         
         // Request overlay permission and start pointer service
         requestOverlayPermission()
+        
+        // Initialize logging
+        LogcatManager.addLog("CameraFragment initialized", "Camera")
 
         // Initialize our background executor
         backgroundExecutor = Executors.newSingleThreadExecutor()
@@ -216,7 +218,7 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
                     android.net.Uri.parse("package:${requireContext().packageName}")
                 )
                 startActivity(intent)
-                addLog("Overlay permission requested")
+                LogcatManager.addLog("Overlay permission requested", "Camera")
             } else {
                 startPointerService()
             }
@@ -232,32 +234,19 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
         } else {
             requireContext().startService(intent)
         }
-        addLog("Pointer overlay service started")
-    }
-    
-    private fun addLog(message: String) {
-        val timestamp = java.text.SimpleDateFormat("HH:mm:ss.SSS", java.util.Locale.getDefault()).format(java.util.Date())
-        val logLine = "[$timestamp] $message"
-        logBuffer.add(logLine)
-        
-        // Keep only last maxLogLines
-        if (logBuffer.size > maxLogLines) {
-            logBuffer.removeAt(0)
-        }
-        
-        Log.d(TAG, logLine)
+        LogcatManager.addLog("Pointer overlay service started", "Camera")
     }
     
     private fun checkAccessibilityPermission() {
         if (!isAccessibilityServiceEnabled()) {
-            addLog("Accessibility service not enabled")
+            LogcatManager.addLog("Accessibility service not enabled", "Camera")
             Toast.makeText(requireContext(), "Please enable accessibility service for mouse control", Toast.LENGTH_LONG).show()
             
             // Open accessibility settings
             val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
             startActivity(intent)
         } else {
-            addLog("Accessibility service enabled")
+            LogcatManager.addLog("Accessibility service enabled", "Camera")
             isMouseControlEnabled = true
         }
     }
@@ -409,9 +398,9 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
             faceBlendshapesResultAdapter.updateResults(null)
             faceBlendshapesResultAdapter.notifyDataSetChanged()
 
-            addLog("Error: $error")
+            LogcatManager.addLog("Error: $error", "Error")
             if (errorCode == FaceLandmarkerHelper.GPU_ERROR) {
-                addLog("GPU error, but continuing with GPU")
+                LogcatManager.addLog("GPU error, but continuing with GPU", "Error")
             }
         }
     }

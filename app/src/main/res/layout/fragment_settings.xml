@@ -13,13 +13,14 @@
         android:layout_margin="16dp"
         android:background="?attr/selectableItemBackgroundBorderless"
         android:src="@android:drawable/ic_menu_revert"
-        android:contentDescription="Back" />
+        android:contentDescription="Back"
+        android:elevation="8dp" />
 
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:padding="16dp"
-        android:paddingTop="64dp">
+        android:paddingTop="72dp">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -44,10 +45,11 @@
             android:padding="8dp"
             android:visibility="gone">
 
-            <ScrollView
+            <androidx.core.widget.NestedScrollView
                 android:id="@+id/logcat_scroll"
                 android:layout_width="match_parent"
-                android:layout_height="match_parent">
+                android:layout_height="match_parent"
+                android:fillViewport="true">
 
                 <TextView
                     android:id="@+id/logcat_text"
@@ -55,8 +57,11 @@
                     android:layout_height="wrap_content"
                     android:textColor="#FFFFFF"
                     android:textSize="10sp"
-                    android:fontFamily="monospace" />
-            </ScrollView>
+                    android:fontFamily="monospace"
+                    android:textIsSelectable="true"
+                    android:text="Waiting for logs..."
+                    android:padding="4dp" />
+            </androidx.core.widget.NestedScrollView>
         </FrameLayout>
 
         <Button
