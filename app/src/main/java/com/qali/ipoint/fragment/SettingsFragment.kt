@@ -285,13 +285,40 @@ class SettingsFragment : Fragment() {
         
         // Track if we should allow updates (prevent interference while typing)
         var isUserEditing = false
+        val handler = android.os.Handler(android.os.Looper.getMainLooper())
+        var reEnableRunnable: Runnable? = null
+        
+        // Helper to re-enable cursor movement with delay
+        fun scheduleReEnableCursor() {
+            reEnableRunnable?.let { handler.removeCallbacks(it) }
+            reEnableRunnable = Runnable {
+                // Check if any EditText is still focused before re-enabling
+                _binding?.let { binding ->
+                    val anyFocused = listOf(
+                        binding.xMovementEditText,
+                        binding.yMovementEditText,
+                        binding.eyePositionXEffectEditText,
+                        binding.eyePositionXMultiplierEditText,
+                        binding.eyePositionYEffectEditText,
+                        binding.eyePositionYMultiplierEditText,
+                        binding.distanceXMultiplierEditText,
+                        binding.distanceYMultiplierEditText
+                    ).any { it.isFocused }
+                    
+                    if (!anyFocused) {
+                        CameraFragment.setCursorMovementEnabled(true)
+                        LogcatManager.addLog("Cursor movement re-enabled after typing", "Settings")
+                    }
+                }
+            }
+            // Wait 1 second after typing stops before re-enabling cursor
+            handler.postDelayed(reEnableRunnable!!, 1000)
+        }
         
         // Handle manual input - only process when user explicitly finishes
         editText.setOnEditorActionListener { _, actionId, _ ->
             if (actionId == EditorInfo.IME_ACTION_DONE || actionId == EditorInfo.IME_ACTION_NEXT) {
                 isUserEditing = false
-                // Disable cursor movement when typing
-                CameraFragment.setCursorMovementEnabled(true)
                 try {
                     val inputValue = editText.text.toString().toFloatOrNull()
                     if (inputValue != null) {
@@ -306,8 +333,9 @@ class SettingsFragment : Fragment() {
                     updateValue(editText, getValue())
                     LogcatManager.addLog("Invalid value for $settingName, restored", "Settings")
                 }
-                // Hide keyboard only when explicitly done
+                // Hide keyboard and schedule re-enable with delay
                 editText.clearFocus()
+                scheduleReEnableCursor()
                 true
             } else {
                 false
@@ -320,11 +348,10 @@ class SettingsFragment : Fragment() {
                 isUserEditing = true
                 // DISABLE cursor movement when user is typing
                 CameraFragment.setCursorMovementEnabled(false)
+                reEnableRunnable?.let { handler.removeCallbacks(it) }
                 // Select all text when focused for easy editing
                 editText.post { editText.selectAll() }
             } else {
-                // Re-enable cursor movement when done editing
-                CameraFragment.setCursorMovementEnabled(true)
                 // Only update when focus is lost AND user was editing
                 if (isUserEditing) {
                     isUserEditing = false
@@ -342,6 +369,8 @@ class SettingsFragment : Fragment() {
                         updateValue(editText, getValue())
                     }
                 }
+                // Schedule re-enable with delay (don't immediately re-enable)
+                scheduleReEnableCursor()
             }
         }
         
@@ -350,14 +379,19 @@ class SettingsFragment : Fragment() {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {
                 isUserEditing = true
                 CameraFragment.setCursorMovementEnabled(false)
+                reEnableRunnable?.let { handler.removeCallbacks(it) }
             }
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
                 isUserEditing = true
                 CameraFragment.setCursorMovementEnabled(false)
+                reEnableRunnable?.let { handler.removeCallbacks(it) }
             }
             override fun afterTextChanged(s: Editable?) {
                 isUserEditing = true
                 CameraFragment.setCursorMovementEnabled(false)
+                reEnableRunnable?.let { handler.removeCallbacks(it) }
+                // Schedule delayed re-enable after user stops typing
+                scheduleReEnableCursor()
             }
         })
     }

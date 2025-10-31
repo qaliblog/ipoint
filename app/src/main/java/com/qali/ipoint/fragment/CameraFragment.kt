@@ -162,6 +162,13 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
             LogcatManager.addLog("App paused but keeping camera active for background tracking", "Camera")
         }
         
+        // Check if camera is still bound
+        if (camera != null) {
+            LogcatManager.addLog("Camera still bound in onPause - should continue running", "Camera")
+        } else {
+            LogcatManager.addLog("WARNING: Camera not bound in onPause - may need rebinding", "Camera")
+        }
+        
         // Ensure pointer service is still updating
         LogcatManager.addLog("Pointer overlay should continue updating in background", "Camera")
     }
@@ -467,6 +474,11 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
         // Always process frames, even in background - this is critical for continuous cursor updates
         // The image analyzer runs on background thread and is bound to activity lifecycle
         try {
+            // Log periodically to confirm we're still getting frames
+            if (System.currentTimeMillis() % 5000 < 100) { // Log every 5 seconds
+                LogcatManager.addLog("Processing camera frame (background check)", "Camera")
+            }
+            
             faceLandmarkerHelper.detectLiveStream(
                 imageProxy = imageProxy,
                 isFrontCamera = cameraFacing == CameraSelector.LENS_FACING_FRONT
@@ -475,6 +487,7 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
             // Log but don't crash - MediaPipe might have issues
             if (System.currentTimeMillis() % 2000 < 50) { // Log every 2 seconds
                 Log.e(TAG, "Failed to detect face: ${e.message}", e)
+                LogcatManager.addLog("Error detecting face: ${e.message}", "Camera")
             }
             imageProxy.close() // Important: close the image proxy if processing fails
         }
