@@ -574,22 +574,16 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
     private fun detectFace(imageProxy: ImageProxy) {
         // Always process frames, even in background - this is critical for continuous cursor updates
         // The image analyzer runs on background thread and is bound to activity lifecycle
+        // Wake lock ensures CPU stays awake so MediaPipe can process frames
         var imageClosed = false
         try {
-            // Log periodically to confirm we're still getting frames
+            // Log periodically to confirm we're still getting frames (especially in background)
             val now = System.currentTimeMillis()
+            val isBackground = !isResumed || activity?.isFinishing == true
             if (now % 5000 < 100) { // Log every 5 seconds to track if frames are coming
-                val activity = activity
-                val isPaused = if (activity != null) {
-                    try {
-                        activity.isFinishing || !isResumed
-                    } catch (e: Exception) {
-                        false
-                    }
-                } else {
-                    true
-                }
-                LogcatManager.addLog("Processing camera frame - Activity paused: $isPaused | ImageProxy: ${imageProxy.imageInfo}", "Camera")
+                val wakeLockActive = CameraForegroundService.getInstance() != null
+                LogcatManager.addLog("Processing frame - Background: $isBackground | WakeLock: $wakeLockActive | MediaPipe: ${this::faceLandmarkerHelper.isInitialized}", "Camera")
+                Log.d(TAG, "Camera frame processing - Background: $isBackground, WakeLock: $wakeLockActive")
             }
             
             // Ensure MediaPipe helper is initialized before processing
@@ -663,6 +657,9 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
             // Check global flag to see if cursor movement should be enabled (disabled when settings are open)
             val cursorEnabled = CameraFragment.isCursorMovementEnabled()
             
+            // Always process tracking even in background - this ensures MediaPipe continues working
+            // The activity lifecycle binding keeps camera active even when app is in background
+            
             // Only update pointer overlay and mouse control if cursor movement is enabled
             // When settings are open, completely disable cursor to prevent interference with typing
             if (cursorEnabled) {
@@ -672,8 +669,10 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
                     PointerOverlayService.updatePointerPosition(adjustedX, adjustedY)
                     // Log periodically to confirm updates are happening (only when paused/background)
                     val now = System.currentTimeMillis()
-                    if (now % 5000 < 100 && (!isResumed || activity?.isFinishing == true)) {
-                        LogcatManager.addLog("Pointer updated in background: (${adjustedX.toInt()}, ${adjustedY.toInt()})", "Tracking")
+                    val isBackground = !isResumed || activity?.isFinishing == true
+                    if (now % 3000 < 100 && isBackground) { // Log every 3 seconds when in background
+                        LogcatManager.addLog("Background: Pointer updated (${adjustedX.toInt()}, ${adjustedY.toInt()}) | WakeLock: ${CameraForegroundService.getInstance() != null}", "Tracking")
+                        Log.d(TAG, "Background pointer update: ($adjustedX, $adjustedY)")
                     }
                 } catch (e: Exception) {
                     // Log but don't crash - service might not be available

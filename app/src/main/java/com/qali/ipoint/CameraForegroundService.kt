@@ -48,7 +48,6 @@ class CameraForegroundService : Service() {
     private var wakeLock: PowerManager.WakeLock? = null
     private var notificationManager: NotificationManager? = null
     private var isWakeLockEnabled = true
-    private var toggleReceiver: BroadcastReceiver? = null
     
     override fun onCreate() {
         super.onCreate()
@@ -57,21 +56,7 @@ class CameraForegroundService : Service() {
         notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         createNotificationChannel()
         
-        // Register broadcast receiver for wake lock toggle
-        toggleReceiver = object : BroadcastReceiver() {
-            override fun onReceive(context: Context?, intent: Intent?) {
-                if (intent?.action == ACTION_TOGGLE_WAKELOCK) {
-                    toggleWakeLock()
-                }
-            }
-        }
-        val filter = IntentFilter(ACTION_TOGGLE_WAKELOCK)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(toggleReceiver, filter, RECEIVER_EXPORTED)
-        } else {
-            @Suppress("DEPRECATION")
-            registerReceiver(toggleReceiver, filter)
-        }
+        // No need for broadcast receiver - we'll handle toggle directly in onStartCommand
         
         // Acquire wake lock to keep app running
         val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
@@ -182,11 +167,11 @@ class CameraForegroundService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         
-        // Create toggle action for wake lock
-        val toggleIntent = Intent(ACTION_TOGGLE_WAKELOCK).apply {
-            setPackage(packageName)
+        // Create toggle action for wake lock - use getService to send intent directly to service
+        val toggleIntent = Intent(this, CameraForegroundService::class.java).apply {
+            action = ACTION_TOGGLE_WAKELOCK
         }
-        val togglePendingIntent = PendingIntent.getBroadcast(
+        val togglePendingIntent = PendingIntent.getService(
             this,
             1,
             toggleIntent,
@@ -201,7 +186,7 @@ class CameraForegroundService : Service() {
         }
         
         val wakeLockStatus = if (isWakeLockEnabled) "ON" else "OFF"
-        val toggleText = if (isWakeLockEnabled) "Disable Wake Lock" else "Enable Wake Lock"
+        val toggleText = if (isWakeLockEnabled) "Turn OFF" else "Turn ON"
         val statusIcon = if (isWakeLockEnabled) {
             android.R.drawable.ic_lock_lock
         } else {
@@ -209,7 +194,7 @@ class CameraForegroundService : Service() {
         }
         
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("?? iPoint Active - Wake Lock: $wakeLockStatus")
+            .setContentTitle("?? iPoint - Wake Lock: $wakeLockStatus")
             .setContentText(if (isWakeLockEnabled) "Wake lock ON ? Camera active ? MediaPipe running" else "Wake lock OFF ? Camera may pause")
             .setSmallIcon(iconRes)
             .setLargeIcon(null) // No large icon to keep it compact
@@ -220,11 +205,13 @@ class CameraForegroundService : Service() {
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setShowWhen(false)
             .setAutoCancel(false) // Don't auto-cancel
-            .addAction(
-                statusIcon,
-                toggleText,
-                togglePendingIntent
-            )
+            .setActions(listOf(
+                NotificationCompat.Action.Builder(
+                    statusIcon,
+                    toggleText,
+                    togglePendingIntent
+                ).build()
+            ))
             .setStyle(NotificationCompat.BigTextStyle()
                 .bigText(if (isWakeLockEnabled) {
                     "Wake lock is ACTIVE to keep the camera running.\nMediaPipe landmark detection is active.\nCamera is running for continuous cursor control."
@@ -300,16 +287,6 @@ class CameraForegroundService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         instance = null
-        
-        // Unregister receiver
-        toggleReceiver?.let {
-            try {
-                unregisterReceiver(it)
-            } catch (e: Exception) {
-                android.util.Log.e(TAG, "Failed to unregister receiver: ${e.message}", e)
-            }
-        }
-        toggleReceiver = null
         
         wakeLock?.let {
             if (it.isHeld) {
