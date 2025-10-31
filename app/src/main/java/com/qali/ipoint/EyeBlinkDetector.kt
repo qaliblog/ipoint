@@ -3,15 +3,16 @@ package com.qali.ipoint
 /**
  * Detects eye blinks (rapid close-open pattern) for click functionality
  */
-class EyeBlinkDetector {
+class EyeBlinkDetector(initialBlinkThreshold: Float = 0.3f) {
     
     companion object {
         private const val TAG = "EyeBlinkDetector"
         private const val BLINK_DETECTION_WINDOW_MS = 500L // Max time for a blink (close-open)
-        private const val BLINK_THRESHOLD_DECREASE = 0.3f // Eye area must decrease by 30% to be considered "closed"
         private const val BLINK_THRESHOLD_INCREASE = 0.2f // Eye area must increase by 20% to be considered "open"
         private const val MIN_TIME_BETWEEN_BLINKS_MS = 300L // Minimum time between clicks
     }
+    
+    private var blinkThreshold: Float = initialBlinkThreshold
     
     private data class EyeState(
         val timestamp: Long,
@@ -23,6 +24,13 @@ class EyeBlinkDetector {
     private var lastClickTime = 0L
     private var baselineEyeArea = 0f
     private var baselineSet = false
+    
+    /**
+     * Update the blink threshold dynamically
+     */
+    fun setBlinkThreshold(threshold: Float) {
+        blinkThreshold = threshold
+    }
     
     /**
      * Process eye area and detect blink pattern

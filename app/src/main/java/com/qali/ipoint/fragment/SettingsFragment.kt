@@ -22,6 +22,7 @@ import com.qali.ipoint.databinding.FragmentSettingsBinding
 import com.qali.ipoint.fragment.CameraFragment
 import java.text.DecimalFormat
 import java.util.Locale
+import androidx.appcompat.widget.Switch
 
 class SettingsFragment : Fragment() {
     
