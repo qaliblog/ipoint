@@ -114,7 +114,7 @@ class SettingsFragment : Fragment() {
         // Update wake lock toggle state in case it changed
         _binding?.let {
             val isEnabled = com.qali.ipoint.CameraForegroundService.getWakeLockState()
-            val switch = it.root.findViewById<androidx.appcompat.widget.Switch>(R.id.wake_lock_toggle)
+            val switch = it.root.findViewById<android.widget.Switch>(R.id.wake_lock_toggle)
             switch?.isChecked = isEnabled
         }
         
@@ -610,7 +610,7 @@ class SettingsFragment : Fragment() {
     private fun setupWakeLockToggle() {
         // Get current wake lock state
         val isEnabled = com.qali.ipoint.CameraForegroundService.getWakeLockState()
-        val wakeLockSwitch = binding.root.findViewById<androidx.appcompat.widget.Switch>(R.id.wake_lock_toggle)
+        val wakeLockSwitch = binding.root.findViewById<android.widget.Switch>(R.id.wake_lock_toggle)
         wakeLockSwitch?.isChecked = isEnabled
         
         wakeLockSwitch?.setOnCheckedChangeListener { _, isChecked ->
@@ -624,7 +624,7 @@ class SettingsFragment : Fragment() {
                         LogcatManager.addLog("Wake lock service started", "Settings")
                     } catch (e: Exception) {
                         LogcatManager.addLog("Failed to start wake lock: ${e.message}", "Settings")
-                        binding.root.findViewById<androidx.appcompat.widget.Switch>(R.id.wake_lock_toggle)?.isChecked = false
+                        binding.root.findViewById<android.widget.Switch>(R.id.wake_lock_toggle)?.isChecked = false
                     }
                 } else {
                     // Toggle wake lock on
@@ -673,7 +673,7 @@ class SettingsFragment : Fragment() {
         }
         
         // Setup one eye detection toggle
-        val oneEyeSwitch = binding.root.findViewById<androidx.appcompat.widget.Switch>(R.id.use_one_eye_toggle)
+        val oneEyeSwitch = binding.root.findViewById<android.widget.Switch>(R.id.use_one_eye_toggle)
         oneEyeSwitch?.isChecked = settingsManager.useOneEyeDetection
         oneEyeSwitch?.setOnCheckedChangeListener { _, isChecked ->
             settingsManager.useOneEyeDetection = isChecked
