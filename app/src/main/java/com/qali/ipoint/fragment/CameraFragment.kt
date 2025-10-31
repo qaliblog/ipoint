@@ -229,11 +229,8 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
     
     private fun startPointerService() {
         val intent = Intent(requireContext(), PointerOverlayService::class.java)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            requireContext().startForegroundService(intent)
-        } else {
-            requireContext().startService(intent)
-        }
+        // Use regular startService - the service will call startForeground itself
+        requireContext().startService(intent)
         LogcatManager.addLog("Pointer overlay service started", "Camera")
     }
     

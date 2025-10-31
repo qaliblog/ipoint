@@ -47,14 +47,18 @@ class PointerOverlayService : Service() {
         
         createPointerView()
         
-        // Create notification channel and start foreground service after view is created
-        createNotificationChannel()
+        // Try to start as foreground service if possible (for Android O+)
+        // Note: On Android 14+ with targetSdk 34, this may fail if no type is specified
+        // But TYPE_APPLICATION_OVERLAY windows work without foreground service
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             try {
+                createNotificationChannel()
                 startForeground(NOTIFICATION_ID, createNotification())
                 Log.d(TAG, "Started as foreground service")
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to start foreground service: ${e.message}", e)
+                // If foreground service fails, continue as regular service
+                // The overlay window will still work
+                Log.w(TAG, "Could not start as foreground service (may require type on Android 14+): ${e.message}")
             }
         }
         
