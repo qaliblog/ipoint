@@ -98,11 +98,6 @@ class CameraForegroundService : Service() {
     }
     
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        // Handle wake lock toggle action from notification
-        if (intent?.action == ACTION_TOGGLE_WAKELOCK) {
-            toggleWakeLock()
-        }
-        
         // Ensure we're still in foreground
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             try {
@@ -173,6 +168,17 @@ class CameraForegroundService : Service() {
             this,
             0,
             intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        
+        // Create toggle action for wake lock - use getService to send intent directly to service
+        val toggleIntent = Intent(this, CameraForegroundService::class.java).apply {
+            action = ACTION_TOGGLE_WAKELOCK
+        }
+        val togglePendingIntent = PendingIntent.getService(
+            this,
+            1,
+            toggleIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         
