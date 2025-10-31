@@ -155,17 +155,33 @@ class PointerOverlayService : Service() {
         }
     }
     
+    fun hidePointer() {
+        // Completely hide the pointer overlay
+        pointerLayout?.let { view ->
+            try {
+                view.visibility = View.GONE
+                // Also move it off-screen
+                val params = view.layoutParams as? WindowManager.LayoutParams
+                params?.let {
+                    it.x = -1000
+                    it.y = -1000
+                    try {
+                        windowManager?.updateViewLayout(view, it)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error updating pointer layout: ${e.message}", e)
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error hiding pointer: ${e.message}", e)
+            }
+        }
+    }
+    
     fun updatePointer(x: Float, y: Float) {
         // Only update if valid coordinates (not -1)
         if (x < 0 || y < 0) {
             // Hide pointer if invalid coordinates
-            pointerLayout?.let { view ->
-                try {
-                    view.visibility = View.GONE
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error hiding pointer: ${e.message}", e)
-                }
-            }
+            hidePointer()
             return
         }
         

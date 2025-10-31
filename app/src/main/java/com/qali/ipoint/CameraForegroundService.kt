@@ -193,7 +193,7 @@ class CameraForegroundService : Service() {
             android.R.drawable.ic_lock_power_off
         }
         
-        return NotificationCompat.Builder(this, CHANNEL_ID)
+        val notificationBuilder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("?? iPoint - Wake Lock: $wakeLockStatus")
             .setContentText(if (isWakeLockEnabled) "Wake lock ON ? Camera active ? MediaPipe running" else "Wake lock OFF ? Camera may pause")
             .setSmallIcon(iconRes)
@@ -205,13 +205,20 @@ class CameraForegroundService : Service() {
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setShowWhen(false)
             .setAutoCancel(false) // Don't auto-cancel
-            .addAction(
-                NotificationCompat.Action.Builder(
-                    statusIcon,
-                    toggleText,
-                    togglePendingIntent
-                ).build()
+        
+        // Add action button - use simpler format that's more compatible
+        try {
+            val action = NotificationCompat.Action(
+                statusIcon,
+                toggleText,
+                togglePendingIntent
             )
+            notificationBuilder.addAction(action)
+        } catch (e: Exception) {
+            android.util.Log.e(TAG, "Failed to add action button: ${e.message}", e)
+        }
+        
+        return notificationBuilder
             .setStyle(NotificationCompat.BigTextStyle()
                 .bigText(if (isWakeLockEnabled) {
                     "Wake lock is ACTIVE to keep the camera running.\nMediaPipe landmark detection is active.\nCamera is running for continuous cursor control."

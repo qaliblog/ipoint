@@ -546,12 +546,15 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
 
         try {
             // Bind camera to ProcessLifecycleOwner to keep it running even when activity pauses
+            // ProcessLifecycleOwner represents the entire application lifecycle, not just one activity
             // This ensures camera continues in background - critical for continuous cursor control
             // Wake lock ensures CPU stays awake for MediaPipe processing
             val lifecycleOwner = androidx.lifecycle.ProcessLifecycleOwner.get()
             camera = cameraProvider.bindToLifecycle(
                 lifecycleOwner, cameraSelector, preview, imageAnalyzer
             )
+            
+            LogcatManager.addLog("Camera bound to ProcessLifecycleOwner - will continue in background", "Camera")
 
             // Attach the viewfinder's surface provider to preview use case
             preview?.setSurfaceProvider(fragmentCameraBinding.viewFinder.surfaceProvider)
@@ -698,14 +701,24 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
                 }
             } else {
                 // Cursor movement is disabled (settings open or user typing)
-                // Hide pointer overlay when disabled
+                // Hide pointer overlay completely when disabled to prevent interference with input
                 try {
                     PointerOverlayService.updatePointerPosition(-1f, -1f)
+                    // Ensure pointer overlay view is hidden and not touchable
+                    val pointerService = PointerOverlayService.getInstance()
+                    pointerService?.let {
+                        try {
+                            // Hide the overlay view completely
+                            it.hidePointer()
+                        } catch (e: Exception) {
+                            // Ignore - service might not expose this
+                        }
+                    }
                 } catch (e: Exception) {
                     // Silent fail - service might not be available
                 }
                 // Don't log this too often - only occasionally
-                if (System.currentTimeMillis() % 3000 < 100) {
+                if (System.currentTimeMillis() % 5000 < 100) {
                     LogcatManager.addLog("Cursor movement disabled (settings open or user typing)", "Tracking")
                 }
             }
