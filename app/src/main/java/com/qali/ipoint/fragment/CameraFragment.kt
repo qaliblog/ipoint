@@ -180,65 +180,61 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
         // Set EyeTracker in OverlayView
         fragmentCameraBinding.overlay.setEyeTracker(eyeTracker)
 
-        // Setup settings button - try Navigation Component first, fallback to FragmentTransaction
+        // Setup settings button with comprehensive debugging
         fragmentCameraBinding.settingsButton.setOnClickListener { view ->
+            Log.e(TAG, "=== SETTINGS BUTTON CLICKED ===")
             LogcatManager.addLog("=== Settings button clicked ===", "Camera")
             LogcatManager.addLog("Fragment isAdded: $isAdded, isResumed: $isResumed", "Camera")
+            Log.e(TAG, "Fragment isAdded: $isAdded, isResumed: $isResumed")
             
             if (!isAdded || !isResumed) {
                 LogcatManager.addLog("Fragment not ready, cannot navigate", "Camera")
                 return@setOnClickListener
             }
             
-            var navigationSucceeded = false
-            
-            // Method 1: Try Navigation Component
             try {
-                LogcatManager.addLog("Attempting Navigation Component method...", "Camera")
-                val rootView = view.rootView ?: fragmentCameraBinding.root
-                val navController = Navigation.findNavController(rootView)
+                LogcatManager.addLog("Finding NavController...", "Camera")
+                // Find NavController from the button view itself first
+                val navController = try {
+                    Navigation.findNavController(view)
+                } catch (e1: Exception) {
+                    LogcatManager.addLog("NavController from button view failed: ${e1.message}", "Camera")
+                    try {
+                        Navigation.findNavController(fragmentCameraBinding.root)
+                    } catch (e2: Exception) {
+                        LogcatManager.addLog("NavController from root failed: ${e2.message}", "Camera")
+                        Navigation.findNavController(requireActivity(), R.id.fragment_container)
+                    }
+                }
                 
                 val currentDestinationId = navController.currentDestination?.id
-                LogcatManager.addLog("NavController found. Current destination: $currentDestinationId", "Camera")
-                LogcatManager.addLog("Camera fragment ID: ${R.id.camera_fragment}", "Camera")
-                LogcatManager.addLog("Settings fragment ID: ${R.id.settings_fragment}", "Camera")
-                LogcatManager.addLog("Action ID: ${R.id.action_camera_to_settings}", "Camera")
+                LogcatManager.addLog("NavController found! Current destination: $currentDestinationId", "Camera")
+                Log.e(TAG, "Current destination ID: $currentDestinationId")
                 
-                navController.navigate(R.id.action_camera_to_settings)
-                navigationSucceeded = true
-                LogcatManager.addLog("Navigation Component navigation succeeded", "Camera")
-            } catch (e: Exception) {
-                LogcatManager.addLog("Navigation Component failed: ${e.message}", "Camera")
-                Log.e(TAG, "Navigation Component error", e)
-                e.printStackTrace()
-            }
-            
-            // Method 2: Fallback to direct FragmentTransaction
-            if (!navigationSucceeded) {
-                try {
-                    LogcatManager.addLog("Attempting FragmentTransaction method...", "Camera")
-                    val fragmentManager = parentFragmentManager
-                    val transaction = fragmentManager.beginTransaction()
-                    
-                    val settingsFragment = com.qali.ipoint.fragment.SettingsFragment()
-                    transaction.replace(R.id.fragment_container, settingsFragment)
-                    transaction.addToBackStack("camera")
-                    transaction.commit()
-                    
-                    navigationSucceeded = true
-                    LogcatManager.addLog("FragmentTransaction navigation succeeded", "Camera")
-                } catch (e: Exception) {
-                    LogcatManager.addLog("FragmentTransaction failed: ${e.message}", "Camera")
-                    Log.e(TAG, "FragmentTransaction error", e)
-                    e.printStackTrace()
+                val actionId = R.id.action_camera_to_settings
+                LogcatManager.addLog("Action ID to navigate: $actionId", "Camera")
+                Log.e(TAG, "Navigating with action ID: $actionId")
+                
+                // Check if we're already on settings
+                if (currentDestinationId == R.id.settings_fragment) {
+                    LogcatManager.addLog("Already on settings, popping back stack", "Camera")
+                    navController.popBackStack()
+                } else {
+                    navController.navigate(actionId)
+                    LogcatManager.addLog("Navigation command sent successfully!", "Camera")
+                    Log.e(TAG, "Navigation command sent successfully!")
                 }
-            }
-            
-            if (!navigationSucceeded) {
-                LogcatManager.addLog("ALL navigation methods failed!", "Camera")
-                Toast.makeText(requireContext(), "Failed to open settings. Check logcat.", Toast.LENGTH_LONG).show()
+            } catch (e: Exception) {
+                LogcatManager.addLog("Navigation failed: ${e.message}", "Camera")
+                Log.e(TAG, "Navigation error", e)
+                e.printStackTrace()
+                Toast.makeText(requireContext(), "Navigation error: ${e.message}", Toast.LENGTH_LONG).show()
             }
         }
+        
+        // Verify button is set up
+        LogcatManager.addLog("Settings button click listener set up", "Camera")
+        Log.e(TAG, "Settings button click listener set up")
         
         // Check and request accessibility permission
         checkAccessibilityPermission()
