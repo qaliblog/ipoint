@@ -295,15 +295,15 @@ class SettingsFragment : Fragment() {
                 // Check if any EditText is still focused before re-enabling
                 _binding?.let { binding ->
                     val anyFocused = listOf(
-                        binding.xMovementEditText,
-                        binding.yMovementEditText,
-                        binding.eyePositionXEffectEditText,
-                        binding.eyePositionXMultiplierEditText,
-                        binding.eyePositionYEffectEditText,
-                        binding.eyePositionYMultiplierEditText,
-                        binding.distanceXMultiplierEditText,
-                        binding.distanceYMultiplierEditText
-                    ).any { it.isFocused }
+                        binding.xMovementValue,
+                        binding.yMovementValue,
+                        binding.eyePosXEffectValue,
+                        binding.eyePosXMultValue,
+                        binding.eyePosYEffectValue,
+                        binding.eyePosYMultValue,
+                        binding.distanceXValue,
+                        binding.distanceYValue
+                    ).any { editText -> editText.isFocused }
                     
                     if (!anyFocused) {
                         CameraFragment.setCursorMovementEnabled(true)
