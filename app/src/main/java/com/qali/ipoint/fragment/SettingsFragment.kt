@@ -120,15 +120,17 @@ class SettingsFragment : Fragment() {
         updateValue(binding.eyePosXEffectValue, settingsManager.eyePositionXEffect)
         
         binding.eyePosXEffectMinus.setOnClickListener {
-            val newValue = settingsManager.eyePositionXEffect - 0.1f
+            val newValue = (settingsManager.eyePositionXEffect - 0.1f).coerceAtLeast(0f)
             settingsManager.eyePositionXEffect = newValue
             updateValue(binding.eyePosXEffectValue, newValue)
+            LogcatManager.addLog("Eye Position X Effect: ${df.format(newValue)} (0 = no effect)", "Settings")
         }
         
         binding.eyePosXEffectPlus.setOnClickListener {
             val newValue = settingsManager.eyePositionXEffect + 0.1f
             settingsManager.eyePositionXEffect = newValue
             updateValue(binding.eyePosXEffectValue, newValue)
+            LogcatManager.addLog("Eye Position X Effect: ${df.format(newValue)} (increases X range)", "Settings")
         }
         
         updateValue(binding.eyePosXMultValue, settingsManager.eyePositionXMultiplier)
@@ -148,15 +150,17 @@ class SettingsFragment : Fragment() {
         updateValue(binding.eyePosYEffectValue, settingsManager.eyePositionYEffect)
         
         binding.eyePosYEffectMinus.setOnClickListener {
-            val newValue = settingsManager.eyePositionYEffect - 0.1f
+            val newValue = (settingsManager.eyePositionYEffect - 0.1f).coerceAtLeast(0f)
             settingsManager.eyePositionYEffect = newValue
             updateValue(binding.eyePosYEffectValue, newValue)
+            LogcatManager.addLog("Eye Position Y Effect: ${df.format(newValue)} (0 = no effect)", "Settings")
         }
         
         binding.eyePosYEffectPlus.setOnClickListener {
             val newValue = settingsManager.eyePositionYEffect + 0.1f
             settingsManager.eyePositionYEffect = newValue
             updateValue(binding.eyePosYEffectValue, newValue)
+            LogcatManager.addLog("Eye Position Y Effect: ${df.format(newValue)} (increases Y range)", "Settings")
         }
         
         updateValue(binding.eyePosYMultValue, settingsManager.eyePositionYMultiplier)

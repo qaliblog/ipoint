@@ -20,18 +20,18 @@ class SettingsManager(context: Context) {
         get() = prefs.getFloat(KEY_Y_MOVEMENT_MULTIPLIER, 1.0f)
         set(value) = prefs.edit().putFloat(KEY_Y_MOVEMENT_MULTIPLIER, value).apply()
     
-    // Eye position X effect (can be positive or negative)
+    // Eye position X effect - range amplifier (0 = no effect, higher = more range)
     var eyePositionXEffect: Float
-        get() = prefs.getFloat(KEY_EYE_POSITION_X_EFFECT, 1.0f)
+        get() = prefs.getFloat(KEY_EYE_POSITION_X_EFFECT, 0f)
         set(value) = prefs.edit().putFloat(KEY_EYE_POSITION_X_EFFECT, value).apply()
     
     var eyePositionXMultiplier: Float
         get() = prefs.getFloat(KEY_EYE_POSITION_X_MULTIPLIER, 1.0f)
         set(value) = prefs.edit().putFloat(KEY_EYE_POSITION_X_MULTIPLIER, value).apply()
     
-    // Eye position Y effect (average Y position)
+    // Eye position Y effect - range amplifier (0 = no effect, higher = more range)
     var eyePositionYEffect: Float
-        get() = prefs.getFloat(KEY_EYE_POSITION_Y_EFFECT, 1.0f)
+        get() = prefs.getFloat(KEY_EYE_POSITION_Y_EFFECT, 0f)
         set(value) = prefs.edit().putFloat(KEY_EYE_POSITION_Y_EFFECT, value).apply()
     
     var eyePositionYMultiplier: Float
@@ -39,12 +39,13 @@ class SettingsManager(context: Context) {
         set(value) = prefs.edit().putFloat(KEY_EYE_POSITION_Y_MULTIPLIER, value).apply()
     
     // Distance-based range multipliers (based on eye area)
+    // 0 = no effect, positive = increases range when far, negative = reverse effect
     var distanceXMultiplier: Float
-        get() = prefs.getFloat(KEY_DISTANCE_X_MULTIPLIER, 1.0f)
+        get() = prefs.getFloat(KEY_DISTANCE_X_MULTIPLIER, 0f)
         set(value) = prefs.edit().putFloat(KEY_DISTANCE_X_MULTIPLIER, value).apply()
     
     var distanceYMultiplier: Float
-        get() = prefs.getFloat(KEY_DISTANCE_Y_MULTIPLIER, 1.0f)
+        get() = prefs.getFloat(KEY_DISTANCE_Y_MULTIPLIER, 0f)
         set(value) = prefs.edit().putFloat(KEY_DISTANCE_Y_MULTIPLIER, value).apply()
     
     companion object {

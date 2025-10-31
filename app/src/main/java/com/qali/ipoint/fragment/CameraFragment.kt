@@ -122,15 +122,16 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
 
     override fun onPause() {
         super.onPause()
+        // Keep camera running in background for continuous pointer updates
+        // Don't stop the face landmarker - let it continue processing
         if(this::faceLandmarkerHelper.isInitialized) {
             viewModel.setMaxFaces(faceLandmarkerHelper.maxNumFaces)
             viewModel.setMinFaceDetectionConfidence(faceLandmarkerHelper.minFaceDetectionConfidence)
             viewModel.setMinFaceTrackingConfidence(faceLandmarkerHelper.minFaceTrackingConfidence)
             viewModel.setMinFacePresenceConfidence(faceLandmarkerHelper.minFacePresenceConfidence)
             viewModel.setDelegate(faceLandmarkerHelper.currentDelegate)
-
-            // Close the FaceLandmarkerHelper and release resources
-            backgroundExecutor.execute { faceLandmarkerHelper.clearFaceLandmarker() }
+            
+            LogcatManager.addLog("App paused but keeping camera active for background tracking", "Camera")
         }
     }
 
@@ -171,10 +172,24 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
         // Set EyeTracker in OverlayView
         fragmentCameraBinding.overlay.setEyeTracker(eyeTracker)
 
-        // Setup settings button
-        fragmentCameraBinding.settingsButton.setOnClickListener {
-            Navigation.findNavController(requireActivity(), R.id.fragment_container)
-                .navigate(R.id.action_camera_to_settings)
+        // Setup settings button - use post to ensure view is fully initialized
+        fragmentCameraBinding.settingsButton.post {
+            fragmentCameraBinding.settingsButton.setOnClickListener {
+                try {
+                    Navigation.findNavController(requireActivity(), R.id.fragment_container)
+                        .navigate(R.id.action_camera_to_settings)
+                    LogcatManager.addLog("Navigating to settings", "Camera")
+                } catch (e: Exception) {
+                    LogcatManager.addLog("Failed to navigate to settings: ${e.message}", "Camera")
+                    // Fallback: restart activity or show settings directly
+                    try {
+                        val intent = Intent(requireContext(), requireActivity().javaClass)
+                        requireActivity().startActivity(intent)
+                    } catch (e2: Exception) {
+                        LogcatManager.addLog("Failed to restart activity: ${e2.message}", "Camera")
+                    }
+                }
+            }
         }
         
         // Check and request accessibility permission
@@ -341,44 +356,54 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
     override fun onResults(
         resultBundle: FaceLandmarkerHelper.ResultBundle
     ) {
-        activity?.runOnUiThread {
-            if (_fragmentCameraBinding != null) {
-                val faceLandmarksList = resultBundle.result.faceLandmarks()
-                
-                if (faceLandmarksList.isNotEmpty()) {
-                    // Track eyes and control mouse
-                    val landmarks = faceLandmarksList[0] // Use first face
-                    val trackingResult = eyeTracker.trackEyes(landmarks)
-                    
-                    // Apply all adjustments from settings
-                    val (adjustedX, adjustedY) = trackingCalculator.calculateAdjustedPosition(trackingResult)
-                    
+        // Process even when app is in background
+        val faceLandmarksList = resultBundle.result.faceLandmarks()
+        
+        if (faceLandmarksList.isNotEmpty()) {
+            // Track eyes and control mouse
+            val landmarks = faceLandmarksList[0] // Use first face
+            val trackingResult = eyeTracker.trackEyes(landmarks)
+            
+            // Apply all adjustments from settings
+            val (adjustedX, adjustedY) = trackingCalculator.calculateAdjustedPosition(trackingResult)
+            
+            // Update system-wide pointer overlay (works even in background)
+            PointerOverlayService.updatePointerPosition(adjustedX, adjustedY)
+            
+            // Control mouse if accessibility is enabled
+            if (isMouseControlEnabled) {
+                MouseControlService.moveCursor(adjustedX, adjustedY)
+            }
+            
+            // Update UI only if fragment is still active
+            activity?.runOnUiThread {
+                if (_fragmentCameraBinding != null) {
                     // Update pointer position on overlay
                     fragmentCameraBinding.overlay.setPointerPosition(adjustedX, adjustedY)
-                    
-                    // Update system-wide pointer overlay
-                    PointerOverlayService.updatePointerPosition(adjustedX, adjustedY)
-                    
-                    // Control mouse if accessibility is enabled
-                    if (isMouseControlEnabled) {
-                        MouseControlService.moveCursor(adjustedX, adjustedY)
-                    }
-                    
-                    LogcatManager.addLog("Eye tracked: (${adjustedX.toInt()}, ${adjustedY.toInt()}) | Area: ${String.format(Locale.US, "%.4f", trackingResult.eyeArea)} | EyePos: (${String.format(Locale.US, "%.2f", trackingResult.eyePositionX)}, ${String.format(Locale.US, "%.2f", trackingResult.eyePositionY)})", "Tracking")
-                } else {
-                    fragmentCameraBinding.overlay.setPointerPosition(-1f, -1f)
-                    PointerOverlayService.updatePointerPosition(-1f, -1f)
-                }
 
-                // Pass necessary information to OverlayView for drawing on the canvas
-                fragmentCameraBinding.overlay.setResults(
-                    resultBundle.result,
-                    resultBundle.inputImageHeight,
-                    resultBundle.inputImageWidth,
-                    RunningMode.LIVE_STREAM
-                )
-                // Force a redraw
-                fragmentCameraBinding.overlay.invalidate()
+                    // Pass necessary information to OverlayView for drawing on the canvas
+                    fragmentCameraBinding.overlay.setResults(
+                        resultBundle.result,
+                        resultBundle.inputImageHeight,
+                        resultBundle.inputImageWidth,
+                        RunningMode.LIVE_STREAM
+                    )
+                    // Force a redraw
+                    fragmentCameraBinding.overlay.invalidate()
+                }
+            }
+            
+            // Log periodically (not every frame to avoid spam)
+            if (System.currentTimeMillis() % 500 < 50) { // Log roughly every 500ms
+                LogcatManager.addLog("Eye: (${adjustedX.toInt()}, ${adjustedY.toInt()}) | Area: ${String.format(Locale.US, "%.4f", trackingResult.eyeArea)} | Pos: (${String.format(Locale.US, "%.2f", trackingResult.eyePositionX)}, ${String.format(Locale.US, "%.2f", trackingResult.eyePositionY)})", "Tracking")
+            }
+        } else {
+            PointerOverlayService.updatePointerPosition(-1f, -1f)
+            
+            activity?.runOnUiThread {
+                if (_fragmentCameraBinding != null) {
+                    fragmentCameraBinding.overlay.setPointerPosition(-1f, -1f)
+                }
             }
         }
     }

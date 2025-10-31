@@ -169,7 +169,7 @@
             android:layout_marginTop="16dp"
             android:layout_marginBottom="8dp" />
 
-        <!-- Eye Position X Effect -->
+        <!-- Eye Position X Effect (Range Amplifier) -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -181,14 +181,14 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Eye Position X Effect"
+                android:text="Eye Position X Range Effect"
                 android:textSize="14sp" />
 
             <TextView
                 android:id="@+id/eye_pos_x_effect_value"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="1.0"
+                android:text="0.0"
                 android:textSize="14sp"
                 android:minWidth="40dp"
                 android:gravity="center" />
@@ -266,7 +266,7 @@
                 android:id="@+id/eye_pos_y_effect_value"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="1.0"
+                android:text="0.0"
                 android:textSize="14sp"
                 android:minWidth="40dp"
                 android:gravity="center" />
@@ -347,14 +347,14 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Distance X Multiplier"
+                android:text="Distance X Range Multiplier"
                 android:textSize="14sp" />
 
             <TextView
                 android:id="@+id/distance_x_value"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="1.0"
+                android:text="0.0"
                 android:textSize="14sp"
                 android:minWidth="40dp"
                 android:gravity="center" />
@@ -386,14 +386,14 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Distance Y Multiplier"
+                android:text="Distance Y Range Multiplier"
                 android:textSize="14sp" />
 
             <TextView
                 android:id="@+id/distance_y_value"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="1.0"
+                android:text="0.0"
                 android:textSize="14sp"
                 android:minWidth="40dp"
                 android:gravity="center" />
