@@ -478,8 +478,15 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
             val (adjustedX, adjustedY) = trackingCalculator.calculateAdjustedPosition(trackingResult)
             
             // Always update system-wide pointer overlay (works even in background)
-            // This is the critical part - must happen every frame
-            PointerOverlayService.updatePointerPosition(adjustedX, adjustedY)
+            // This is the critical part - must happen every frame, regardless of app state
+            try {
+                PointerOverlayService.updatePointerPosition(adjustedX, adjustedY)
+            } catch (e: Exception) {
+                // Log but don't crash - service might not be available
+                if (System.currentTimeMillis() % 2000 < 50) { // Log every 2 seconds
+                    Log.e(TAG, "Failed to update pointer overlay: ${e.message}", e)
+                }
+            }
             
             // Control mouse if accessibility is enabled
             if (isMouseControlEnabled) {

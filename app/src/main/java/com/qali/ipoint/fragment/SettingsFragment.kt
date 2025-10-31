@@ -325,7 +325,10 @@ class SettingsFragment : Fragment() {
     }
     
     private fun updateValue(editText: EditText, value: Float) {
-        editText.setText(df.format(value))
+        // Only update if not currently being edited by user
+        if (!editText.isFocused) {
+            editText.setText(df.format(value))
+        }
     }
     
     private fun updateValue(textView: android.widget.TextView, value: Float) {
