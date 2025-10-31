@@ -500,11 +500,20 @@ class SettingsFragment : Fragment() {
         editText.setOnFocusChangeListener { _, hasFocus ->
             if (hasFocus) {
                 isUserEditing = true
-                // Cursor is already disabled when settings are open, but make sure it stays disabled
+                // Force disable cursor movement when any EditText gains focus
+                // This is critical to prevent cursor jumping while typing
                 CameraFragment.setCursorMovementEnabled(false)
                 reEnableRunnable?.let { handler.removeCallbacks(it) }
                 // Select all text when focused for easy editing
-                editText.post { editText.selectAll() }
+                editText.post { 
+                    try {
+                        editText.selectAll()
+                        // Double-check cursor is still disabled after focus change
+                        CameraFragment.setCursorMovementEnabled(false)
+                    } catch (e: Exception) {
+                        android.util.Log.e("SettingsFragment", "Error in focus handler", e)
+                    }
+                }
             } else {
                 // Only update when focus is lost AND user was editing
                 if (isUserEditing) {
@@ -523,7 +532,8 @@ class SettingsFragment : Fragment() {
                         updateValue(editText, getValue())
                     }
                 }
-                // Don't schedule re-enable - cursor stays disabled while settings are open
+                // Keep cursor disabled - settings fragment is still open
+                CameraFragment.setCursorMovementEnabled(false)
             }
         }
         

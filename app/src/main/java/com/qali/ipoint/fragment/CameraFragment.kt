@@ -118,8 +118,19 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
 
     override fun onResume() {
         super.onResume()
-        // Re-enable cursor movement when fragment resumes
-        setCursorMovementEnabled(true)
+        
+        // Check if settings fragment is visible - if so, don't enable cursor movement
+        val settingsFragment = childFragmentManager.findFragmentByTag("SettingsFragment") 
+            ?: parentFragmentManager.findFragmentByTag("SettingsFragment")
+        
+        // Only re-enable cursor movement if settings fragment is NOT visible
+        if (settingsFragment == null || !settingsFragment.isVisible || !settingsFragment.isResumed) {
+            setCursorMovementEnabled(true)
+        } else {
+            // Settings is open - keep cursor disabled
+            setCursorMovementEnabled(false)
+            LogcatManager.addLog("Settings is open - keeping cursor disabled", "Camera")
+        }
         
         // Make sure that all permissions are still present, since the
         // user could have removed them while the app was in paused state.
@@ -164,8 +175,9 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
         hasCheckedAccessibilityOnResume = false
         isSettingsOpening = false
         // Keep camera running in background for continuous pointer updates
-        // Don't stop the face landmarker - let it continue processing
-        // Camera is bound to activity lifecycle, so it will continue running
+        // Camera is bound to ProcessLifecycleOwner, so it continues even when activity pauses
+        // Don't stop the face landmarker - let it continue processing in background
+        // MediaPipe will continue processing frames as long as wake lock is active
         if(this::faceLandmarkerHelper.isInitialized) {
             viewModel.setMaxFaces(faceLandmarkerHelper.maxNumFaces)
             viewModel.setMinFaceDetectionConfidence(faceLandmarkerHelper.minFaceDetectionConfidence)
