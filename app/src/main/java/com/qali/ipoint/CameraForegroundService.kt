@@ -167,17 +167,19 @@ class CameraForegroundService : Service() {
         }
         
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("?? iPoint Active")
-            .setContentText(text ?: "Eye tracking running ? Camera active")
+            .setContentTitle("?? iPoint Active - Wake Lock")
+            .setContentText(text ?: "Wake lock acquired ? Camera active ? Eye tracking running")
             .setSmallIcon(iconRes)
+            .setLargeIcon(null)
             .setContentIntent(pendingIntent)
             .setOngoing(true)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setShowWhen(false)
+            .setAutoCancel(false)
             .setStyle(NotificationCompat.BigTextStyle()
-                .bigText(text ?: "Eye tracking is active. Camera is running for continuous cursor control."))
+                .bigText(text ?: "Wake lock is active to keep the camera running.\nEye tracking is active. Camera is running for continuous cursor control."))
             .build()
         
         notificationManager?.notify(NOTIFICATION_ID, notification)
