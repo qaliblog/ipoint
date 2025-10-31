@@ -206,24 +206,22 @@ class CameraForegroundService : Service() {
             .setShowWhen(false)
             .setAutoCancel(false) // Don't auto-cancel
         
-        // Add action button - use simpler format that's more compatible
-        try {
-            val action = NotificationCompat.Action(
-                statusIcon,
-                toggleText,
-                togglePendingIntent
-            )
-            notificationBuilder.addAction(action)
-        } catch (e: Exception) {
-            android.util.Log.e(TAG, "Failed to add action button: ${e.message}", e)
-        }
+        // Add action button - ensure it's added BEFORE setting style for maximum compatibility
+        val action = NotificationCompat.Action(
+            statusIcon,
+            toggleText,
+            togglePendingIntent
+        )
+        notificationBuilder.addAction(action)
+        android.util.Log.d(TAG, "Action button added: $toggleText (icon res: $statusIcon)")
         
+        // Set expanded style - action buttons should still be visible
         return notificationBuilder
             .setStyle(NotificationCompat.BigTextStyle()
                 .bigText(if (isWakeLockEnabled) {
-                    "Wake lock is ACTIVE to keep the camera running.\nMediaPipe landmark detection is active.\nCamera is running for continuous cursor control."
+                    "Wake lock is ACTIVE to keep the camera running.\nMediaPipe landmark detection is active.\nCamera is running for continuous cursor control.\n\nTap \"$toggleText\" button above to disable."
                 } else {
-                    "Wake lock is DISABLED.\nCamera may pause when device sleeps.\nTap to enable wake lock."
+                    "Wake lock is DISABLED.\nCamera may pause when device sleeps.\n\nTap \"$toggleText\" button above to enable."
                 }))
             .build()
     }
