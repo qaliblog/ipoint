@@ -26,10 +26,13 @@ class SettingsFragment : Fragment() {
     private val df = DecimalFormat("#.##")
     private var isLogcatVisible = false
     private val logcatUpdateListener: (String) -> Unit = { logText ->
-        binding.logcatText.text = logText
-        // Auto scroll to bottom
-        binding.logcatScroll.post {
-            binding.logcatScroll.fullScroll(android.view.View.FOCUS_DOWN)
+        // Safely access binding - it might be null if fragment view is destroyed
+        _binding?.let { binding ->
+            binding.logcatText.text = logText
+            // Auto scroll to bottom
+            binding.logcatScroll.post {
+                binding.logcatScroll.fullScroll(android.view.View.FOCUS_DOWN)
+            }
         }
     }
     
@@ -73,9 +76,11 @@ class SettingsFragment : Fragment() {
     
     override fun onResume() {
         super.onResume()
-        // Register logcat listener
-        LogcatManager.registerListener(logcatUpdateListener)
-        LogcatManager.addLog("Settings opened", "Settings")
+        // Register logcat listener only if view is created
+        if (_binding != null) {
+            LogcatManager.registerListener(logcatUpdateListener)
+            LogcatManager.addLog("Settings opened", "Settings")
+        }
     }
     
     override fun onPause() {
@@ -85,19 +90,21 @@ class SettingsFragment : Fragment() {
     }
     
     private fun setupLogcat() {
-        // Set initial log text
-        binding.logcatText.text = LogcatManager.getLogText()
-        
-        binding.toggleLogcat.setOnClickListener {
-            isLogcatVisible = !isLogcatVisible
-            binding.logcatContainer.visibility = if (isLogcatVisible) View.VISIBLE else View.GONE
-            binding.toggleLogcat.text = if (isLogcatVisible) "Hide Logcat" else "Show Logcat"
+        // Set initial log text - check binding first
+        _binding?.let { binding ->
+            binding.logcatText.text = LogcatManager.getLogText()
             
-            if (isLogcatVisible) {
-                // Refresh log when showing
-                binding.logcatText.text = LogcatManager.getLogText()
-                binding.logcatScroll.post {
-                    binding.logcatScroll.fullScroll(android.view.View.FOCUS_DOWN)
+            binding.toggleLogcat.setOnClickListener {
+                isLogcatVisible = !isLogcatVisible
+                binding.logcatContainer.visibility = if (isLogcatVisible) View.VISIBLE else View.GONE
+                binding.toggleLogcat.text = if (isLogcatVisible) "Hide Logcat" else "Show Logcat"
+                
+                if (isLogcatVisible) {
+                    // Refresh log when showing
+                    binding.logcatText.text = LogcatManager.getLogText()
+                    binding.logcatScroll.post {
+                        binding.logcatScroll.fullScroll(android.view.View.FOCUS_DOWN)
+                    }
                 }
             }
         }

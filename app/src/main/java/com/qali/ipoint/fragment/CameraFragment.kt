@@ -193,7 +193,7 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
                 val existingFragment = fragmentManager.findFragmentByTag("SettingsFragment")
                 if (existingFragment != null && existingFragment.isVisible) {
                     LogcatManager.addLog("Settings already open, closing...", "Camera")
-                    fragmentManager.popBackStack("SettingsFragment", android.app.FragmentManager.POP_BACK_STACK_INCLUSIVE)
+                    fragmentManager.popBackStack("SettingsFragment", androidx.fragment.app.FragmentManager.POP_BACK_STACK_INCLUSIVE)
                     return@setOnClickListener
                 }
                 
