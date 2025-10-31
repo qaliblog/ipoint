@@ -465,7 +465,8 @@ class SettingsFragment : Fragment() {
                         binding.eyePosYEffectValue,
                         binding.eyePosYMultValue,
                         binding.distanceXValue,
-                        binding.distanceYValue
+                        binding.distanceYValue,
+                        binding.blinkThresholdValue
                     ).any { editText -> editText.isFocused }
                     
                     // Don't re-enable cursor movement - it stays disabled while settings are open
