@@ -22,7 +22,6 @@ import com.qali.ipoint.databinding.FragmentSettingsBinding
 import com.qali.ipoint.fragment.CameraFragment
 import java.text.DecimalFormat
 import java.util.Locale
-import androidx.appcompat.widget.Switch
 
 class SettingsFragment : Fragment() {
     
@@ -115,7 +114,8 @@ class SettingsFragment : Fragment() {
         // Update wake lock toggle state in case it changed
         _binding?.let {
             val isEnabled = com.qali.ipoint.CameraForegroundService.getWakeLockState()
-            it.wakeLockToggle.isChecked = isEnabled
+            val switch = it.root.findViewById<androidx.appcompat.widget.Switch>(R.id.wake_lock_toggle)
+            switch?.isChecked = isEnabled
         }
         
         // Register logcat listener only if view is created
@@ -610,9 +610,10 @@ class SettingsFragment : Fragment() {
     private fun setupWakeLockToggle() {
         // Get current wake lock state
         val isEnabled = com.qali.ipoint.CameraForegroundService.getWakeLockState()
-        binding.wakeLockToggle.isChecked = isEnabled
+        val wakeLockSwitch = binding.root.findViewById<androidx.appcompat.widget.Switch>(R.id.wake_lock_toggle)
+        wakeLockSwitch?.isChecked = isEnabled
         
-        binding.wakeLockToggle.setOnCheckedChangeListener { _, isChecked ->
+        wakeLockSwitch?.setOnCheckedChangeListener { _, isChecked ->
             if (isChecked) {
                 // Enable wake lock via service
                 val service = com.qali.ipoint.CameraForegroundService.getInstance()
@@ -623,7 +624,7 @@ class SettingsFragment : Fragment() {
                         LogcatManager.addLog("Wake lock service started", "Settings")
                     } catch (e: Exception) {
                         LogcatManager.addLog("Failed to start wake lock: ${e.message}", "Settings")
-                        binding.wakeLockToggle.isChecked = false
+                        binding.root.findViewById<androidx.appcompat.widget.Switch>(R.id.wake_lock_toggle)?.isChecked = false
                     }
                 } else {
                     // Toggle wake lock on
@@ -672,8 +673,9 @@ class SettingsFragment : Fragment() {
         }
         
         // Setup one eye detection toggle
-        binding.useOneEyeToggle.isChecked = settingsManager.useOneEyeDetection
-        binding.useOneEyeToggle.setOnCheckedChangeListener { _, isChecked ->
+        val oneEyeSwitch = binding.root.findViewById<androidx.appcompat.widget.Switch>(R.id.use_one_eye_toggle)
+        oneEyeSwitch?.isChecked = settingsManager.useOneEyeDetection
+        oneEyeSwitch?.setOnCheckedChangeListener { _, isChecked ->
             settingsManager.useOneEyeDetection = isChecked
             LogcatManager.addLog("One eye detection: ${if (isChecked) "enabled" else "disabled"}", "Settings")
         }
