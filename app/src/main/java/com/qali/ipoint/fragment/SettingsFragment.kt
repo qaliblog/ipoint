@@ -72,6 +72,9 @@ class SettingsFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         
+        // Disable cursor movement when settings are open
+        CameraFragment.setCursorMovementEnabled(false)
+        
         settingsManager = SettingsManager(requireContext())
         
         // Setup back button - ensure it works reliably
@@ -100,6 +103,10 @@ class SettingsFragment : Fragment() {
     
     override fun onResume() {
         super.onResume()
+        
+        // Disable cursor movement when settings are visible
+        CameraFragment.setCursorMovementEnabled(false)
+        
         // Register logcat listener only if view is created
         try {
             if (_binding != null && isAdded) {
@@ -114,12 +121,25 @@ class SettingsFragment : Fragment() {
     
     override fun onPause() {
         super.onPause()
+        
+        // Re-enable cursor movement when settings are closed
+        CameraFragment.setCursorMovementEnabled(true)
+        
         // Unregister logcat listener
         try {
             LogcatManager.unregisterListener(logcatUpdateListener)
         } catch (e: Exception) {
             android.util.Log.e("SettingsFragment", "Error unregistering listener", e)
         }
+    }
+    
+    override fun onDestroyView() {
+        super.onDestroyView()
+        
+        // Re-enable cursor movement when settings view is destroyed
+        CameraFragment.setCursorMovementEnabled(true)
+        
+        _binding = null
     }
     
     private fun setupLogcat() {
@@ -401,6 +421,7 @@ class SettingsFragment : Fragment() {
         var reEnableRunnable: Runnable? = null
         
         // Helper to re-enable cursor movement with delay
+        // NOTE: Since cursor is disabled when settings are open, this is only for when editing
         fun scheduleReEnableCursor() {
             reEnableRunnable?.let { handler.removeCallbacks(it) }
             reEnableRunnable = Runnable {
@@ -417,16 +438,15 @@ class SettingsFragment : Fragment() {
                         binding.distanceYValue
                     ).any { editText -> editText.isFocused }
                     
-                    if (!anyFocused) {
-                        CameraFragment.setCursorMovementEnabled(true)
-                        LogcatManager.addLog("Cursor movement re-enabled after typing", "Settings")
-                    } else {
+                    // Don't re-enable cursor movement - it stays disabled while settings are open
+                    // The cursor will be re-enabled when settings fragment is closed
+                    if (anyFocused) {
                         // If still focused, schedule again
                         scheduleReEnableCursor()
                     }
                 }
             }
-            // Wait 5 seconds after typing stops before re-enabling cursor (longer delay to prevent cursor jumping)
+            // Wait 5 seconds after typing stops (but cursor stays disabled while in settings)
             handler.postDelayed(reEnableRunnable!!, 5000)
         }
         
@@ -457,11 +477,11 @@ class SettingsFragment : Fragment() {
             }
         }
         
-        // Track when user starts/finishes editing
+            // Track when user starts/finishes editing
         editText.setOnFocusChangeListener { _, hasFocus ->
             if (hasFocus) {
                 isUserEditing = true
-                // DISABLE cursor movement when user is typing
+                // Cursor is already disabled when settings are open, but make sure it stays disabled
                 CameraFragment.setCursorMovementEnabled(false)
                 reEnableRunnable?.let { handler.removeCallbacks(it) }
                 // Select all text when focused for easy editing
@@ -484,8 +504,7 @@ class SettingsFragment : Fragment() {
                         updateValue(editText, getValue())
                     }
                 }
-                // Schedule re-enable with delay (don't immediately re-enable)
-                scheduleReEnableCursor()
+                // Don't schedule re-enable - cursor stays disabled while settings are open
             }
         }
         
@@ -493,6 +512,7 @@ class SettingsFragment : Fragment() {
         editText.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {
                 isUserEditing = true
+                // Cursor is already disabled when settings are open
                 CameraFragment.setCursorMovementEnabled(false)
                 reEnableRunnable?.let { handler.removeCallbacks(it) }
                 // Immediately cancel any pending re-enable
@@ -500,6 +520,7 @@ class SettingsFragment : Fragment() {
             }
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
                 isUserEditing = true
+                // Cursor is already disabled when settings are open
                 CameraFragment.setCursorMovementEnabled(false)
                 reEnableRunnable?.let { handler.removeCallbacks(it) }
                 // Immediately cancel any pending re-enable
@@ -507,11 +528,10 @@ class SettingsFragment : Fragment() {
             }
             override fun afterTextChanged(s: Editable?) {
                 isUserEditing = true
+                // Cursor is already disabled when settings are open
                 CameraFragment.setCursorMovementEnabled(false)
                 reEnableRunnable?.let { handler.removeCallbacks(it) }
-                // Don't schedule re-enable immediately - wait for user to stop typing
-                // Reset the timer every time text changes
-                scheduleReEnableCursor()
+                // Don't schedule re-enable - cursor stays disabled while settings are open
             }
         })
     }

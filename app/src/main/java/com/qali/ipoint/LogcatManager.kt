@@ -69,13 +69,16 @@ object LogcatManager {
     
     fun registerListener(listener: (String) -> Unit) {
         synchronized(listeners) {
-            listeners.add(listener)
+            if (!listeners.contains(listener)) {
+                listeners.add(listener)
+            }
         }
         // Immediately send current log (with error handling)
         try {
-            listener(getLogText())
+            val logText = getLogText()
+            listener(logText)
         } catch (e: Exception) {
-            Log.e("LogcatManager", "Error in listener: ${e.message}", e)
+            Log.e("LogcatManager", "Error in listener during registration: ${e.message}", e)
         }
     }
     
