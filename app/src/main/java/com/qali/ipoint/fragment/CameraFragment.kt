@@ -150,21 +150,6 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
         }
     }
 
-    override fun onPause() {
-        super.onPause()
-        // Keep camera running in background for continuous pointer updates
-        // Don't stop the face landmarker - let it continue processing
-        if(this::faceLandmarkerHelper.isInitialized) {
-            viewModel.setMaxFaces(faceLandmarkerHelper.maxNumFaces)
-            viewModel.setMinFaceDetectionConfidence(faceLandmarkerHelper.minFaceDetectionConfidence)
-            viewModel.setMinFaceTrackingConfidence(faceLandmarkerHelper.minFaceTrackingConfidence)
-            viewModel.setMinFacePresenceConfidence(faceLandmarkerHelper.minFacePresenceConfidence)
-            viewModel.setDelegate(faceLandmarkerHelper.currentDelegate)
-            
-            LogcatManager.addLog("App paused but keeping camera active for background tracking", "Camera")
-        }
-    }
-
     override fun onDestroyView() {
         _fragmentCameraBinding = null
         super.onDestroyView()
@@ -268,8 +253,8 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
         LogcatManager.addLog("Settings button click listener set up", "Camera")
         Log.e(TAG, "Settings button click listener set up")
         
-        // Check and request accessibility permission
-        checkAccessibilityPermission()
+        // Check accessibility permission (show prompt on initial load)
+        checkAccessibilityPermission(showPrompt = true)
         
         // Request overlay permission and start pointer service
         requestOverlayPermission()
