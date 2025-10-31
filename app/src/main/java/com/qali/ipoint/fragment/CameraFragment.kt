@@ -180,46 +180,50 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
         // Set EyeTracker in OverlayView
         fragmentCameraBinding.overlay.setEyeTracker(eyeTracker)
 
-        // Setup settings button - use post to ensure view is fully initialized
-        fragmentCameraBinding.settingsButton.setOnClickListener {
+        // Setup settings button - ensure fragment is attached and view is ready
+        fragmentCameraBinding.settingsButton.setOnClickListener { view ->
+            if (!isAdded) {
+                LogcatManager.addLog("Fragment not attached, cannot navigate", "Camera")
+                return@setOnClickListener
+            }
+            
             try {
                 LogcatManager.addLog("Settings button clicked", "Camera")
-                // Post to ensure navigation is ready
-                fragmentCameraBinding.settingsButton.post {
+                
+                // Try multiple navigation methods for robustness
+                val navController = try {
+                    // Method 1: Use fragment's extension function (recommended)
+                    findNavController()
+                } catch (e: Exception) {
+                    LogcatManager.addLog("Method 1 failed: ${e.message}, trying method 2", "Camera")
                     try {
-                        // Use fragment's built-in findNavController() method
-                        val navController = findNavController()
-                        val currentDestinationId = navController.currentDestination?.id
-                        LogcatManager.addLog("Current destination: $currentDestinationId", "Camera")
-                        
-                        // Check if we're already on settings, if so go back first
-                        if (currentDestinationId == R.id.settings_fragment) {
-                            navController.popBackStack()
-                            LogcatManager.addLog("Already on settings, popping back", "Camera")
-                        } else {
-                            // Navigate to settings
-                            navController.navigate(R.id.action_camera_to_settings)
-                            LogcatManager.addLog("Navigating to settings", "Camera")
-                        }
-                    } catch (e: Exception) {
-                        LogcatManager.addLog("Failed to navigate to settings: ${e.message}", "Camera")
-                        Log.e(TAG, "Navigation error", e)
-                        e.printStackTrace()
-                        // Fallback: try alternative navigation method
-                        try {
-                            val activity = requireActivity()
-                            val navHostFragment = activity.supportFragmentManager.findFragmentById(R.id.fragment_container) as? androidx.navigation.fragment.NavHostFragment
-                            navHostFragment?.navController?.navigate(R.id.action_camera_to_settings)
-                            LogcatManager.addLog("Navigation succeeded using fallback method", "Camera")
-                        } catch (e2: Exception) {
-                            LogcatManager.addLog("Fallback navigation also failed: ${e2.message}", "Camera")
-                            Log.e(TAG, "Fallback navigation error", e2)
-                        }
+                        // Method 2: Find from view
+                        Navigation.findNavController(view)
+                    } catch (e2: Exception) {
+                        LogcatManager.addLog("Method 2 failed: ${e2.message}, trying method 3", "Camera")
+                        // Method 3: Find NavHostFragment directly
+                        val navHostFragment = parentFragment?.childFragmentManager?.fragments?.firstOrNull { 
+                            it is androidx.navigation.fragment.NavHostFragment 
+                        } as? androidx.navigation.fragment.NavHostFragment
+                        navHostFragment?.navController ?: throw Exception("All navigation methods failed")
                     }
                 }
+                
+                val currentDestinationId = navController.currentDestination?.id
+                LogcatManager.addLog("Current destination: $currentDestinationId", "Camera")
+                
+                // Check if we're already on settings, if so go back first
+                if (currentDestinationId == R.id.settings_fragment) {
+                    navController.popBackStack()
+                    LogcatManager.addLog("Already on settings, popping back", "Camera")
+                } else {
+                    // Navigate to settings
+                    navController.navigate(R.id.action_camera_to_settings)
+                    LogcatManager.addLog("Navigating to settings fragment", "Camera")
+                }
             } catch (e: Exception) {
-                LogcatManager.addLog("Failed to setup settings button: ${e.message}", "Camera")
-                Log.e(TAG, "Settings button error", e)
+                LogcatManager.addLog("Navigation failed: ${e.message}", "Camera")
+                Log.e(TAG, "Navigation error", e)
                 e.printStackTrace()
             }
         }
