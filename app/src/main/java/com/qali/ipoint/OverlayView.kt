@@ -5,6 +5,7 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.util.AttributeSet
+import android.view.MotionEvent
 import android.view.View
 import com.google.mediapipe.tasks.components.containers.NormalizedLandmark
 import com.google.mediapipe.tasks.vision.core.RunningMode
@@ -19,6 +20,11 @@ class OverlayView(context: Context?, attrs: AttributeSet?) :
         // Don't intercept touch events - let them pass through to views behind
         isClickable = false
         isFocusable = false
+    }
+    
+    override fun onTouchEvent(event: MotionEvent?): Boolean {
+        // Let touches pass through to views behind (like the settings button)
+        return false
     }
 
     private var results: FaceLandmarkerResult? = null
