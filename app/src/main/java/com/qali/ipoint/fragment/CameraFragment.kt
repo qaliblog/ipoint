@@ -180,51 +180,48 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
         // Set EyeTracker in OverlayView
         fragmentCameraBinding.overlay.setEyeTracker(eyeTracker)
 
-        // Setup settings button - ensure fragment is attached and view is ready
-        fragmentCameraBinding.settingsButton.setOnClickListener { view ->
-            if (!isAdded) {
-                LogcatManager.addLog("Fragment not attached, cannot navigate", "Camera")
-                return@setOnClickListener
-            }
-            
+        // Setup settings button - use root view to find NavController
+        fragmentCameraBinding.settingsButton.setOnClickListener {
             try {
                 LogcatManager.addLog("Settings button clicked", "Camera")
                 
-                // Try multiple navigation methods for robustness
+                // Find NavController from the root view (most reliable method)
+                val rootView = view?.rootView ?: fragmentCameraBinding.root
                 val navController = try {
-                    // Method 1: Use fragment's extension function (recommended)
-                    findNavController()
+                    Navigation.findNavController(rootView)
                 } catch (e: Exception) {
-                    LogcatManager.addLog("Method 1 failed: ${e.message}, trying method 2", "Camera")
+                    LogcatManager.addLog("Root view method failed: ${e.message}", "Camera")
+                    // Fallback: Find from activity's NavHostFragment
                     try {
-                        // Method 2: Find from view
-                        Navigation.findNavController(view)
+                        val activity = requireActivity()
+                        val navHostFragment = activity.supportFragmentManager.findFragmentById(R.id.fragment_container) 
+                            as? androidx.navigation.fragment.NavHostFragment
+                        navHostFragment?.navController ?: throw Exception("NavHostFragment not found")
                     } catch (e2: Exception) {
-                        LogcatManager.addLog("Method 2 failed: ${e2.message}, trying method 3", "Camera")
-                        // Method 3: Find NavHostFragment directly
-                        val navHostFragment = parentFragment?.childFragmentManager?.fragments?.firstOrNull { 
-                            it is androidx.navigation.fragment.NavHostFragment 
-                        } as? androidx.navigation.fragment.NavHostFragment
-                        navHostFragment?.navController ?: throw Exception("All navigation methods failed")
+                        LogcatManager.addLog("NavHostFragment method failed: ${e2.message}", "Camera")
+                        // Last resort: try fragment's findNavController
+                        findNavController()
                     }
                 }
                 
                 val currentDestinationId = navController.currentDestination?.id
-                LogcatManager.addLog("Current destination: $currentDestinationId", "Camera")
+                LogcatManager.addLog("NavController found. Current destination ID: $currentDestinationId (camera=${R.id.camera_fragment})", "Camera")
                 
-                // Check if we're already on settings, if so go back first
-                if (currentDestinationId == R.id.settings_fragment) {
-                    navController.popBackStack()
-                    LogcatManager.addLog("Already on settings, popping back", "Camera")
-                } else {
-                    // Navigate to settings
+                // Navigate to settings
+                try {
                     navController.navigate(R.id.action_camera_to_settings)
-                    LogcatManager.addLog("Navigating to settings fragment", "Camera")
+                    LogcatManager.addLog("Navigation command executed: action_camera_to_settings", "Camera")
+                } catch (e: Exception) {
+                    LogcatManager.addLog("Navigate() failed: ${e.message}", "Camera")
+                    Log.e(TAG, "Navigate error", e)
+                    e.printStackTrace()
                 }
             } catch (e: Exception) {
-                LogcatManager.addLog("Navigation failed: ${e.message}", "Camera")
+                LogcatManager.addLog("All navigation methods failed: ${e.message}", "Camera")
                 Log.e(TAG, "Navigation error", e)
                 e.printStackTrace()
+                // Show user feedback
+                Toast.makeText(requireContext(), "Failed to open settings: ${e.message}", Toast.LENGTH_SHORT).show()
             }
         }
         
