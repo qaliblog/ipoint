@@ -493,10 +493,11 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
     private fun detectFace(imageProxy: ImageProxy) {
         // Always process frames, even in background - this is critical for continuous cursor updates
         // The image analyzer runs on background thread and is bound to activity lifecycle
+        var imageClosed = false
         try {
             // Log periodically to confirm we're still getting frames
             val now = System.currentTimeMillis()
-            if (now % 3000 < 100) { // Log every 3 seconds to track if frames are coming
+            if (now % 5000 < 100) { // Log every 5 seconds to track if frames are coming
                 val activity = activity
                 val isPaused = if (activity != null) {
                     try {
@@ -507,20 +508,37 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
                 } else {
                     true
                 }
-                LogcatManager.addLog("Processing camera frame - Activity paused: $isPaused", "Camera")
+                LogcatManager.addLog("Processing camera frame - Activity paused: $isPaused | ImageProxy: ${imageProxy.imageInfo}", "Camera")
+            }
+            
+            // Ensure MediaPipe helper is initialized before processing
+            if (!this::faceLandmarkerHelper.isInitialized) {
+                imageProxy.close()
+                imageClosed = true
+                return
             }
             
             faceLandmarkerHelper.detectLiveStream(
                 imageProxy = imageProxy,
                 isFrontCamera = cameraFacing == CameraSelector.LENS_FACING_FRONT
             )
+            // Don't close imageProxy here - MediaPipe will close it in its callback
+            imageClosed = true // Mark as handled by MediaPipe
         } catch (e: Exception) {
             // Log but don't crash - MediaPipe might have issues
             if (System.currentTimeMillis() % 2000 < 50) { // Log every 2 seconds
                 Log.e(TAG, "Failed to detect face: ${e.message}", e)
                 LogcatManager.addLog("Error detecting face: ${e.message}", "Camera")
             }
-            imageProxy.close() // Important: close the image proxy if processing fails
+            // Only close if we haven't already passed it to MediaPipe
+            if (!imageClosed) {
+                try {
+                    imageProxy.close() // Important: close the image proxy if processing fails
+                    imageClosed = true
+                } catch (closeEx: Exception) {
+                    // Ignore close errors
+                }
+            }
         }
     }
 

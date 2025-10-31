@@ -38,6 +38,9 @@ class MainActivity : AppCompatActivity() {
             or android.view.View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
         )
         
+        // Keep screen on to prevent activity suspension
+        window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        
         // Acquire wake lock to keep camera running in background
         // Use SCREEN_DIM_WAKE_LOCK which keeps CPU and screen on (better for camera)
         val powerManager = getSystemService(POWER_SERVICE) as PowerManager
