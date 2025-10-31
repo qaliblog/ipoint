@@ -468,9 +468,8 @@ class SettingsFragment : Fragment() {
                     updateValue(editText, getValue())
                     LogcatManager.addLog("Invalid value for $settingName, restored", "Settings")
                 }
-                // Hide keyboard and schedule re-enable with delay
+                // Hide keyboard - cursor stays disabled while settings are open
                 editText.clearFocus()
-                scheduleReEnableCursor()
                 true
             } else {
                 false

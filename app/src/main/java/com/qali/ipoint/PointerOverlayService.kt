@@ -174,11 +174,8 @@ class PointerOverlayService : Service() {
                 val screenX = x.toInt() - 30 // Center the pointer (60/2)
                 val screenY = y.toInt() - 30
                 
-                // Only update if position actually changed (to avoid unnecessary updates)
-                if (it.x == screenX && it.y == screenY && view.visibility == View.VISIBLE) {
-                    return
-                }
-                
+                // Always update position (removed optimization check to ensure timely updates)
+                // This ensures cursor updates are transmitted correctly and on time
                 it.x = screenX
                 it.y = screenY
                 
@@ -188,11 +185,11 @@ class PointerOverlayService : Service() {
                         view.visibility = View.VISIBLE
                     }
                     
-                    // Update position on main thread
+                    // Always update on main thread immediately
                     if (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) {
                         windowManager?.updateViewLayout(view, it)
                     } else {
-                        // Post to main thread if we're on background thread
+                        // Post to main thread if we're on background thread - use post() for immediate execution
                         android.os.Handler(android.os.Looper.getMainLooper()).post {
                             try {
                                 windowManager?.updateViewLayout(view, it)

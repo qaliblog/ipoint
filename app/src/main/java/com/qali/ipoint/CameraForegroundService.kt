@@ -82,13 +82,37 @@ class CameraForegroundService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         // Ensure we're still in foreground
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForeground(NOTIFICATION_ID, createNotification())
+            try {
+                startForeground(NOTIFICATION_ID, createNotification())
+            } catch (e: Exception) {
+                android.util.Log.e(TAG, "Failed to start foreground in onStartCommand: ${e.message}", e)
+            }
         }
         
-        // Renew wake lock if needed
+        // Renew wake lock if needed - this is critical to keep camera active
         wakeLock?.let {
             if (!it.isHeld) {
-                it.acquire()
+                try {
+                    it.acquire()
+                    android.util.Log.d(TAG, "Wake lock renewed in onStartCommand")
+                } catch (e: Exception) {
+                    android.util.Log.e(TAG, "Failed to renew wake lock: ${e.message}", e)
+                }
+            }
+        } ?: run {
+            // Wake lock is null - recreate it
+            val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+            wakeLock = powerManager.newWakeLock(
+                PowerManager.PARTIAL_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEUP,
+                "iPoint::CameraForegroundWakeLock"
+            ).apply {
+                setReferenceCounted(false)
+                try {
+                    acquire()
+                    android.util.Log.d(TAG, "Wake lock recreated and acquired")
+                } catch (e: Exception) {
+                    android.util.Log.e(TAG, "Failed to acquire wake lock: ${e.message}", e)
+                }
             }
         }
         

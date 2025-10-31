@@ -527,6 +527,17 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
             // Attach the viewfinder's surface provider to preview use case
             preview?.setSurfaceProvider(fragmentCameraBinding.viewFinder.surfaceProvider)
             LogcatManager.addLog("Camera bound successfully", "Camera")
+            
+            // Verify wake lock is active
+            val foregroundService = CameraForegroundService.getInstance()
+            if (foregroundService == null) {
+                LogcatManager.addLog("WARNING: Camera foreground service not running - restarting", "Camera")
+                try {
+                    CameraForegroundService.start(requireContext())
+                } catch (e: Exception) {
+                    LogcatManager.addLog("Failed to restart foreground service: ${e.message}", "Camera")
+                }
+            }
         } catch (exc: Exception) {
             Log.e(TAG, "Use case binding failed", exc)
             LogcatManager.addLog("Camera binding failed: ${exc.message}", "Camera")
@@ -629,9 +640,10 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
             
             // Always update pointer overlay position (even when cursor movement is disabled for visual feedback)
             // Only disable mouse control when typing, but keep pointer visible
+            // Update immediately without delays to ensure timely transmission
             try {
                 PointerOverlayService.updatePointerPosition(adjustedX, adjustedY)
-                // Log periodically to confirm updates (only when paused/background)
+                // Log periodically to confirm updates are happening (only when paused/background)
                 val now = System.currentTimeMillis()
                 if (now % 5000 < 100 && (!isResumed || activity?.isFinishing == true)) {
                     LogcatManager.addLog("Pointer updated in background: (${adjustedX.toInt()}, ${adjustedY.toInt()})", "Tracking")
@@ -644,7 +656,11 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
                 }
             }
             
+            // Also update mouse control immediately if enabled and cursor movement is enabled
+            // This ensures both pointer overlay and mouse control are synchronized
+            
             // Control mouse if accessibility is enabled AND cursor movement is enabled (don't move mouse when typing)
+            // Update immediately to ensure timely cursor movement
             if (isMouseControlEnabled && cursorEnabled) {
                 try {
                     MouseControlService.moveCursor(adjustedX, adjustedY)
@@ -657,7 +673,7 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
             } else if (!cursorEnabled) {
                 // Don't log this too often - only occasionally
                 if (System.currentTimeMillis() % 3000 < 100) {
-                    LogcatManager.addLog("Mouse control disabled (user typing)", "Tracking")
+                    LogcatManager.addLog("Mouse control disabled (settings open or user typing)", "Tracking")
                 }
             }
             
