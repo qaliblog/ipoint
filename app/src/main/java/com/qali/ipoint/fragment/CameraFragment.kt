@@ -525,9 +525,18 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
     }
 
     override fun onEmpty() {
-        fragmentCameraBinding.overlay.setPointerPosition(-1f, -1f)
+        // Always update system-wide pointer overlay (works from any thread)
         PointerOverlayService.updatePointerPosition(-1f, -1f)
-        fragmentCameraBinding.overlay.clear()
+        
+        // Update UI only if fragment is still active and visible
+        if (isResumed && _fragmentCameraBinding != null) {
+            activity?.runOnUiThread {
+                if (_fragmentCameraBinding != null) {
+                    fragmentCameraBinding.overlay.setPointerPosition(-1f, -1f)
+                    fragmentCameraBinding.overlay.clear()
+                }
+            }
+        }
     }
 
     override fun onError(error: String, errorCode: Int) {

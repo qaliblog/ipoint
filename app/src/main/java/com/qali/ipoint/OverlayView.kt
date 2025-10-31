@@ -52,13 +52,15 @@ class OverlayView(context: Context?, attrs: AttributeSet?) :
         results = null
         pointerX = -1f
         pointerY = -1f
-        invalidate()
+        // Post invalidate to main thread to ensure thread safety
+        post { invalidate() }
     }
     
     fun setPointerPosition(x: Float, y: Float) {
         pointerX = x
         pointerY = y
-        invalidate()
+        // Post invalidate to main thread to ensure thread safety
+        post { invalidate() }
     }
 
     private fun initPaints() {
@@ -228,7 +230,8 @@ class OverlayView(context: Context?, attrs: AttributeSet?) :
                 max(width * 1f / imageWidth, height * 1f / imageHeight)
             }
         }
-        invalidate()
+        // Post invalidate to main thread to ensure thread safety
+        post { invalidate() }
     }
 
     companion object {
