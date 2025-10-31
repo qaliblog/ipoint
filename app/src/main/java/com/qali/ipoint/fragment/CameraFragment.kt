@@ -45,6 +45,7 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.navigation.Navigation
+import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.viewpager2.widget.ViewPager2.SCROLL_STATE_DRAGGING
 import androidx.viewpager2.widget.ViewPager2.SCROLL_STATE_IDLE
@@ -186,7 +187,8 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
                 // Post to ensure navigation is ready
                 fragmentCameraBinding.settingsButton.post {
                     try {
-                        val navController = Navigation.findNavController(requireActivity(), R.id.fragment_container)
+                        // Use fragment's built-in findNavController() method
+                        val navController = findNavController()
                         val currentDestinationId = navController.currentDestination?.id
                         LogcatManager.addLog("Current destination: $currentDestinationId", "Camera")
                         
@@ -195,17 +197,24 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
                             navController.popBackStack()
                             LogcatManager.addLog("Already on settings, popping back", "Camera")
                         } else {
-                            if (navController.currentDestination?.id == R.id.camera_fragment) {
-                                navController.navigate(R.id.action_camera_to_settings)
-                                LogcatManager.addLog("Navigating to settings", "Camera")
-                            } else {
-                                LogcatManager.addLog("Not on camera fragment, cannot navigate to settings", "Camera")
-                            }
+                            // Navigate to settings
+                            navController.navigate(R.id.action_camera_to_settings)
+                            LogcatManager.addLog("Navigating to settings", "Camera")
                         }
                     } catch (e: Exception) {
                         LogcatManager.addLog("Failed to navigate to settings: ${e.message}", "Camera")
                         Log.e(TAG, "Navigation error", e)
                         e.printStackTrace()
+                        // Fallback: try alternative navigation method
+                        try {
+                            val activity = requireActivity()
+                            val navHostFragment = activity.supportFragmentManager.findFragmentById(R.id.fragment_container) as? androidx.navigation.fragment.NavHostFragment
+                            navHostFragment?.navController?.navigate(R.id.action_camera_to_settings)
+                            LogcatManager.addLog("Navigation succeeded using fallback method", "Camera")
+                        } catch (e2: Exception) {
+                            LogcatManager.addLog("Fallback navigation also failed: ${e2.message}", "Camera")
+                            Log.e(TAG, "Fallback navigation error", e2)
+                        }
                     }
                 }
             } catch (e: Exception) {
@@ -273,15 +282,20 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
     }
     
     private fun checkAccessibilityPermission() {
-        if (!isAccessibilityServiceEnabled()) {
-            LogcatManager.addLog("Accessibility service not enabled", "Camera")
-            Toast.makeText(requireContext(), "Please enable accessibility service for mouse control", Toast.LENGTH_LONG).show()
-            
-            // Open accessibility settings
-            val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
-            startActivity(intent)
+        val isEnabled = isAccessibilityServiceEnabled()
+        if (!isEnabled) {
+            LogcatManager.addLog("Accessibility service not enabled - requesting permission", "Camera")
+            // Only show toast and open settings if we're in foreground and user is interacting
+            if (isResumed && isAdded) {
+                Toast.makeText(requireContext(), "Please enable accessibility service for mouse control", Toast.LENGTH_LONG).show()
+                
+                // Open accessibility settings
+                val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                startActivity(intent)
+            }
+            isMouseControlEnabled = false
         } else {
-            LogcatManager.addLog("Accessibility service enabled", "Camera")
+            LogcatManager.addLog("Accessibility service is enabled and ready", "Camera")
             isMouseControlEnabled = true
         }
     }
