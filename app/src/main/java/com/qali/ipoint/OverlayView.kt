@@ -1,4 +1,4 @@
-package com.google.mediapipe.examples.facelandmarker
+package com.qali.ipoint
 
 import android.content.Context
 import android.graphics.Canvas

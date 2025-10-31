@@ -1,4 +1,4 @@
-package com.google.mediapipe.examples.facelandmarker
+package com.qali.ipoint
 
 import android.graphics.PointF
 import android.util.DisplayMetrics
