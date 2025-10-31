@@ -96,14 +96,18 @@
                 android:text="X Movement Multiplier"
                 android:textSize="14sp" />
 
-            <TextView
+            <EditText
                 android:id="@+id/x_movement_value"
-                android:layout_width="wrap_content"
+                android:layout_width="80dp"
                 android:layout_height="wrap_content"
                 android:text="1.0"
                 android:textSize="14sp"
-                android:minWidth="40dp"
-                android:gravity="center" />
+                android:inputType="numberDecimal|numberSigned"
+                android:minWidth="80dp"
+                android:gravity="center"
+                android:padding="8dp"
+                android:background="@android:drawable/edit_text"
+                android:selectAllOnFocus="true" />
 
             <Button
                 android:id="@+id/x_movement_minus"
@@ -135,14 +139,18 @@
                 android:text="Y Movement Multiplier"
                 android:textSize="14sp" />
 
-            <TextView
+            <EditText
                 android:id="@+id/y_movement_value"
-                android:layout_width="wrap_content"
+                android:layout_width="80dp"
                 android:layout_height="wrap_content"
                 android:text="1.0"
                 android:textSize="14sp"
-                android:minWidth="40dp"
-                android:gravity="center" />
+                android:inputType="numberDecimal|numberSigned"
+                android:minWidth="80dp"
+                android:gravity="center"
+                android:padding="8dp"
+                android:background="@android:drawable/edit_text"
+                android:selectAllOnFocus="true" />
 
             <Button
                 android:id="@+id/y_movement_minus"
@@ -184,14 +192,18 @@
                 android:text="Eye Position X Range Effect"
                 android:textSize="14sp" />
 
-            <TextView
+            <EditText
                 android:id="@+id/eye_pos_x_effect_value"
-                android:layout_width="wrap_content"
+                android:layout_width="80dp"
                 android:layout_height="wrap_content"
                 android:text="0.0"
                 android:textSize="14sp"
-                android:minWidth="40dp"
-                android:gravity="center" />
+                android:inputType="numberDecimal|numberSigned"
+                android:minWidth="80dp"
+                android:gravity="center"
+                android:padding="8dp"
+                android:background="@android:drawable/edit_text"
+                android:selectAllOnFocus="true" />
 
             <Button
                 android:id="@+id/eye_pos_x_effect_minus"
@@ -223,14 +235,18 @@
                 android:text="Eye Position X Multiplier"
                 android:textSize="14sp" />
 
-            <TextView
+            <EditText
                 android:id="@+id/eye_pos_x_mult_value"
-                android:layout_width="wrap_content"
+                android:layout_width="80dp"
                 android:layout_height="wrap_content"
                 android:text="1.0"
                 android:textSize="14sp"
-                android:minWidth="40dp"
-                android:gravity="center" />
+                android:inputType="numberDecimal|numberSigned"
+                android:minWidth="80dp"
+                android:gravity="center"
+                android:padding="8dp"
+                android:background="@android:drawable/edit_text"
+                android:selectAllOnFocus="true" />
 
             <Button
                 android:id="@+id/eye_pos_x_mult_minus"
@@ -262,14 +278,18 @@
                 android:text="Eye Position Y Effect"
                 android:textSize="14sp" />
 
-            <TextView
+            <EditText
                 android:id="@+id/eye_pos_y_effect_value"
-                android:layout_width="wrap_content"
+                android:layout_width="80dp"
                 android:layout_height="wrap_content"
                 android:text="0.0"
                 android:textSize="14sp"
-                android:minWidth="40dp"
-                android:gravity="center" />
+                android:inputType="numberDecimal|numberSigned"
+                android:minWidth="80dp"
+                android:gravity="center"
+                android:padding="8dp"
+                android:background="@android:drawable/edit_text"
+                android:selectAllOnFocus="true" />
 
             <Button
                 android:id="@+id/eye_pos_y_effect_minus"
@@ -301,14 +321,18 @@
                 android:text="Eye Position Y Multiplier"
                 android:textSize="14sp" />
 
-            <TextView
+            <EditText
                 android:id="@+id/eye_pos_y_mult_value"
-                android:layout_width="wrap_content"
+                android:layout_width="80dp"
                 android:layout_height="wrap_content"
                 android:text="1.0"
                 android:textSize="14sp"
-                android:minWidth="40dp"
-                android:gravity="center" />
+                android:inputType="numberDecimal|numberSigned"
+                android:minWidth="80dp"
+                android:gravity="center"
+                android:padding="8dp"
+                android:background="@android:drawable/edit_text"
+                android:selectAllOnFocus="true" />
 
             <Button
                 android:id="@+id/eye_pos_y_mult_minus"
@@ -350,14 +374,18 @@
                 android:text="Distance X Range Multiplier"
                 android:textSize="14sp" />
 
-            <TextView
+            <EditText
                 android:id="@+id/distance_x_value"
-                android:layout_width="wrap_content"
+                android:layout_width="80dp"
                 android:layout_height="wrap_content"
                 android:text="0.0"
                 android:textSize="14sp"
-                android:minWidth="40dp"
-                android:gravity="center" />
+                android:inputType="numberDecimal|numberSigned"
+                android:minWidth="80dp"
+                android:gravity="center"
+                android:padding="8dp"
+                android:background="@android:drawable/edit_text"
+                android:selectAllOnFocus="true" />
 
             <Button
                 android:id="@+id/distance_x_minus"
@@ -389,14 +417,18 @@
                 android:text="Distance Y Range Multiplier"
                 android:textSize="14sp" />
 
-            <TextView
+            <EditText
                 android:id="@+id/distance_y_value"
-                android:layout_width="wrap_content"
+                android:layout_width="80dp"
                 android:layout_height="wrap_content"
                 android:text="0.0"
                 android:textSize="14sp"
-                android:minWidth="40dp"
-                android:gravity="center" />
+                android:inputType="numberDecimal|numberSigned"
+                android:minWidth="80dp"
+                android:gravity="center"
+                android:padding="8dp"
+                android:background="@android:drawable/edit_text"
+                android:selectAllOnFocus="true" />
 
             <Button
                 android:id="@+id/distance_y_minus"

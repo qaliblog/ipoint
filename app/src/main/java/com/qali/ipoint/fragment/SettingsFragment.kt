@@ -7,6 +7,10 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.fragment.app.Fragment
+import android.text.Editable
+import android.text.TextWatcher
+import android.view.inputmethod.EditorInfo
+import android.widget.EditText
 import com.qali.ipoint.LogcatManager
 import com.qali.ipoint.R
 import com.qali.ipoint.SettingsManager
@@ -43,9 +47,22 @@ class SettingsFragment : Fragment() {
         
         settingsManager = SettingsManager(requireContext())
         
-        // Setup back button
+        // Setup back button - ensure it works reliably
         binding.backButton.setOnClickListener {
-            requireActivity().onBackPressedDispatcher.onBackPressed()
+            try {
+                if (isAdded && !requireActivity().isFinishing) {
+                    requireActivity().onBackPressedDispatcher.onBackPressed()
+                    LogcatManager.addLog("Back button pressed, returning to camera", "Settings")
+                }
+            } catch (e: Exception) {
+                LogcatManager.addLog("Error handling back button: ${e.message}", "Settings")
+                // Fallback: use finish if fragment is in activity
+                try {
+                    parentFragmentManager.popBackStack()
+                } catch (e2: Exception) {
+                    LogcatManager.addLog("Failed to pop backstack: ${e2.message}", "Settings")
+                }
+            }
         }
         
         setupLogcat()
@@ -87,7 +104,11 @@ class SettingsFragment : Fragment() {
     }
     
     private fun setupMovementMultipliers() {
-        updateValue(binding.xMovementValue, settingsManager.xMovementMultiplier)
+        setupValueEditor(binding.xMovementValue, 
+            { settingsManager.xMovementMultiplier },
+            { settingsManager.xMovementMultiplier = it },
+            "X Movement Multiplier",
+            0.1f)
         
         binding.xMovementMinus.setOnClickListener {
             val newValue = (settingsManager.xMovementMultiplier - 0.1f).coerceAtLeast(0.1f)
@@ -103,7 +124,11 @@ class SettingsFragment : Fragment() {
             LogcatManager.addLog("X Movement Multiplier: ${df.format(newValue)}", "Settings")
         }
         
-        updateValue(binding.yMovementValue, settingsManager.yMovementMultiplier)
+        setupValueEditor(binding.yMovementValue,
+            { settingsManager.yMovementMultiplier },
+            { settingsManager.yMovementMultiplier = it },
+            "Y Movement Multiplier",
+            0.1f)
         
         binding.yMovementMinus.setOnClickListener {
             val newValue = (settingsManager.yMovementMultiplier - 0.1f).coerceAtLeast(0.1f)
@@ -121,7 +146,11 @@ class SettingsFragment : Fragment() {
     }
     
     private fun setupEyePositionEffects() {
-        updateValue(binding.eyePosXEffectValue, settingsManager.eyePositionXEffect)
+        setupValueEditor(binding.eyePosXEffectValue,
+            { settingsManager.eyePositionXEffect },
+            { settingsManager.eyePositionXEffect = it.coerceAtLeast(0f) },
+            "Eye Position X Range Effect",
+            0.1f)
         
         binding.eyePosXEffectMinus.setOnClickListener {
             val newValue = (settingsManager.eyePositionXEffect - 0.1f).coerceAtLeast(0f)
@@ -137,7 +166,11 @@ class SettingsFragment : Fragment() {
             LogcatManager.addLog("Eye Position X Effect: ${df.format(newValue)} (increases X range)", "Settings")
         }
         
-        updateValue(binding.eyePosXMultValue, settingsManager.eyePositionXMultiplier)
+        setupValueEditor(binding.eyePosXMultValue,
+            { settingsManager.eyePositionXMultiplier },
+            { settingsManager.eyePositionXMultiplier = it },
+            "Eye Position X Multiplier",
+            0.1f)
         
         binding.eyePosXMultMinus.setOnClickListener {
             val newValue = settingsManager.eyePositionXMultiplier - 0.1f
@@ -151,7 +184,11 @@ class SettingsFragment : Fragment() {
             updateValue(binding.eyePosXMultValue, newValue)
         }
         
-        updateValue(binding.eyePosYEffectValue, settingsManager.eyePositionYEffect)
+        setupValueEditor(binding.eyePosYEffectValue,
+            { settingsManager.eyePositionYEffect },
+            { settingsManager.eyePositionYEffect = it.coerceAtLeast(0f) },
+            "Eye Position Y Range Effect",
+            0.1f)
         
         binding.eyePosYEffectMinus.setOnClickListener {
             val newValue = (settingsManager.eyePositionYEffect - 0.1f).coerceAtLeast(0f)
@@ -167,7 +204,11 @@ class SettingsFragment : Fragment() {
             LogcatManager.addLog("Eye Position Y Effect: ${df.format(newValue)} (increases Y range)", "Settings")
         }
         
-        updateValue(binding.eyePosYMultValue, settingsManager.eyePositionYMultiplier)
+        setupValueEditor(binding.eyePosYMultValue,
+            { settingsManager.eyePositionYMultiplier },
+            { settingsManager.eyePositionYMultiplier = it },
+            "Eye Position Y Multiplier",
+            0.1f)
         
         binding.eyePosYMultMinus.setOnClickListener {
             val newValue = settingsManager.eyePositionYMultiplier - 0.1f
