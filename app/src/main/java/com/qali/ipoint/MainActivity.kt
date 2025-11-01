@@ -16,18 +16,14 @@
 package com.qali.ipoint
 
 import android.os.Bundle
-import android.os.PowerManager
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
-import androidx.navigation.fragment.NavHostFragment
-import androidx.navigation.ui.setupWithNavController
 import com.qali.ipoint.CameraForegroundService
 import com.qali.ipoint.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() {
     private lateinit var activityMainBinding: ActivityMainBinding
     private val viewModel : MainViewModel by viewModels()
-    private var wakeLock: PowerManager.WakeLock? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -60,18 +56,14 @@ class MainActivity : AppCompatActivity() {
     
     override fun onResume() {
         super.onResume()
-        // Renew wake lock if needed
-        wakeLock?.let {
-            if (!it.isHeld) {
-                it.acquire()
+        // Ensure service is running
+        if (CameraForegroundService.getInstance() == null) {
+            try {
+                CameraForegroundService.start(this)
+            } catch (e: Exception) {
+                android.util.Log.e("MainActivity", "Failed to restart service: ${e.message}", e)
             }
         }
-    }
-    
-    override fun onPause() {
-        super.onPause()
-        // Don't release wake lock - keep it for background camera operation
-        // Only release on destroy
     }
     
     override fun onDestroy() {
