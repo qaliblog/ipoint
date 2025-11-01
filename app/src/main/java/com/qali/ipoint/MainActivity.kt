@@ -77,19 +77,10 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         
-        // Stop camera foreground service
-        try {
-            CameraForegroundService.stop(this)
-        } catch (e: Exception) {
-            android.util.Log.e("MainActivity", "Error stopping camera service", e)
-        }
-        
-        wakeLock?.let {
-            if (it.isHeld) {
-                it.release()
-            }
-        }
-        wakeLock = null
+        // DON'T stop the service - let it continue running in background
+        // The service will persist even when app is closed and handle all operations
+        // User can stop it manually via notification or settings
+        android.util.Log.d("MainActivity", "Activity destroyed, but service continues running")
     }
 
     override fun onBackPressed() {

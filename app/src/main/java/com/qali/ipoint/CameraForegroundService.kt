@@ -5,21 +5,28 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
-import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.content.IntentFilter
 import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
+import android.util.DisplayMetrics
+import android.util.Log
+import android.view.WindowManager
+import androidx.camera.core.*
+import androidx.camera.core.CameraSelector
+import androidx.camera.lifecycle.ProcessLifecycleOwner
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
+import com.google.mediapipe.tasks.vision.core.RunningMode
 import com.qali.ipoint.fragment.CameraFragment
+import java.util.concurrent.Executors
 
 /**
- * Foreground service to keep camera processing active in background
- * Shows a persistent notification with wake lock icon to indicate the app is running
+ * Comprehensive foreground service that handles all camera operations,
+ * eye tracking, and pointer updates in the background
  */
-class CameraForegroundService : Service() {
+class CameraForegroundService : Service(), FaceLandmarkerHelper.LandmarkerListener {
     
     companion object {
         private const val TAG = "CameraForegroundService"
@@ -58,81 +65,175 @@ class CameraForegroundService : Service() {
     var isWakeLockEnabled = true
         private set
     
+    // Camera and processing components
+    private var cameraProvider: ProcessCameraProvider? = null
+    private var camera: Camera? = null
+    private var imageAnalysis: ImageAnalysis? = null
+    private var faceLandmarkerHelper: FaceLandmarkerHelper? = null
+    
+    // Eye tracking components
+    private var eyeTracker: EyeTracker? = null
+    private var trackingCalculator: TrackingCalculator? = null
+    private var eyeBlinkDetector: EyeBlinkDetector? = null
+    private var settingsManager: SettingsManager? = null
+    
+    // Thread executor for background processing
+    private val backgroundExecutor = Executors.newSingleThreadExecutor()
+    
+    // Display metrics
+    private var displayMetrics: DisplayMetrics? = null
+    
     override fun onCreate() {
         super.onCreate()
         instance = this
         
+        // Get display metrics
+        val windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
+        displayMetrics = DisplayMetrics().apply {
+            windowManager.defaultDisplay.getMetrics(this)
+        }
+        
         notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         createNotificationChannel()
         
-        // No need for broadcast receiver - we'll handle toggle directly in onStartCommand
-        
-        // Acquire wake lock to keep app running
+        // Acquire wake lock
         val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
         wakeLock = powerManager.newWakeLock(
-            PowerManager.PARTIAL_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEUP,
+            PowerManager.PARTIAL_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEP,
             "iPoint::CameraForegroundWakeLock"
         ).apply {
             setReferenceCounted(false)
             try {
                 acquire()
                 isWakeLockEnabled = true
-                android.util.Log.d(TAG, "Wake lock acquired successfully")
-                com.qali.ipoint.LogcatManager.addLog("Wake lock acquired - MediaPipe will continue processing", "Service")
+                Log.d(TAG, "Wake lock acquired successfully")
+                LogcatManager.addLog("Wake lock acquired - Background service starting", "Service")
             } catch (e: Exception) {
-                android.util.Log.e(TAG, "Failed to acquire wake lock: ${e.message}", e)
+                Log.e(TAG, "Failed to acquire wake lock: ${e.message}", e)
                 isWakeLockEnabled = false
             }
         }
         
-        // Start as foreground service - this MUST be called in onCreate
+        // Initialize components
+        settingsManager = SettingsManager(this)
+        eyeTracker = EyeTracker(displayMetrics!!, settingsManager!!.useOneEyeDetection)
+        trackingCalculator = TrackingCalculator(settingsManager!!, displayMetrics!!)
+        eyeBlinkDetector = EyeBlinkDetector(settingsManager!!.blinkThreshold)
+        
+        // Initialize FaceLandmarkerHelper
+        backgroundExecutor.execute {
+            try {
+                faceLandmarkerHelper = FaceLandmarkerHelper(
+                    context = this@CameraForegroundService,
+                    runningMode = RunningMode.LIVE_STREAM,
+                    minFaceDetectionConfidence = FaceLandmarkerHelper.DEFAULT_FACE_DETECTION_CONFIDENCE,
+                    minFaceTrackingConfidence = FaceLandmarkerHelper.DEFAULT_FACE_TRACKING_CONFIDENCE,
+                    minFacePresenceConfidence = FaceLandmarkerHelper.DEFAULT_FACE_PRESENCE_CONFIDENCE,
+                    maxNumFaces = FaceLandmarkerHelper.DEFAULT_NUM_FACES,
+                    currentDelegate = FaceLandmarkerHelper.DELEGATE_GPU,
+                    faceLandmarkerHelperListener = this@CameraForegroundService
+                )
+                LogcatManager.addLog("FaceLandmarkerHelper initialized in service", "Service")
+                
+                // Initialize camera after MediaPipe is ready
+                initializeCamera()
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to initialize FaceLandmarkerHelper: ${e.message}", e)
+                LogcatManager.addLog("Failed to initialize MediaPipe: ${e.message}", "Service")
+            }
+        }
+        
+        // Start as foreground service
         try {
             val notification = createNotification()
             startForeground(NOTIFICATION_ID, notification)
-            android.util.Log.d(TAG, "Foreground service started with notification")
+            Log.d(TAG, "Foreground service started with notification")
         } catch (e: Exception) {
-            android.util.Log.e(TAG, "Failed to start foreground service: ${e.message}", e)
-            // Try to stop self if we can't start foreground
+            Log.e(TAG, "Failed to start foreground service: ${e.message}", e)
             stopSelf()
         }
     }
     
+    private fun initializeCamera() {
+        val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
+        
+        cameraProviderFuture.addListener({
+            try {
+                cameraProvider = cameraProviderFuture.get()
+                
+                // Build image analysis use case
+                imageAnalysis = ImageAnalysis.Builder()
+                    .setTargetAspectRatio(AspectRatio.RATIO_4_3)
+                    .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                    .build()
+                
+                // Set analyzer
+                imageAnalysis?.setAnalyzer(
+                    backgroundExecutor,
+                    ImageAnalysis.Analyzer { imageProxy ->
+                        try {
+                            // Update settings dynamically
+                            eyeTracker?.setUseOneEye(settingsManager?.useOneEyeDetection ?: false)
+                            eyeBlinkDetector?.setBlinkThreshold(settingsManager?.blinkThreshold ?: 0.3f)
+                            
+                            // Process frame
+                            faceLandmarkerHelper?.detectLiveStream(imageProxy, isFrontCamera = true)
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Error processing frame: ${e.message}", e)
+                            imageProxy.close()
+                        }
+                    }
+                )
+                
+                // Bind to ProcessLifecycleOwner to keep camera running even when app is in background
+                cameraProvider?.let { provider ->
+                    // Use front camera
+                    val cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
+                    
+                    // Unbind all use cases before rebinding
+                    provider.unbindAll()
+                    
+                    // Bind camera to ProcessLifecycleOwner
+                    camera = provider.bindToLifecycle(
+                        ProcessLifecycleOwner.get(),
+                        cameraSelector,
+                        imageAnalysis
+                    )
+                    
+                    LogcatManager.addLog("Camera initialized in background service", "Service")
+                    Log.d(TAG, "Camera bound successfully in service")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to initialize camera: ${e.message}", e)
+                LogcatManager.addLog("Failed to initialize camera: ${e.message}", "Service")
+            }
+        }, ContextCompat.getMainExecutor(this))
+    }
+    
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // Handle wake lock toggle
+        if (intent?.action == ACTION_TOGGLE_WAKELOCK) {
+            toggleWakeLock()
+        }
+        
         // Ensure we're still in foreground
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             try {
                 startForeground(NOTIFICATION_ID, createNotification())
             } catch (e: Exception) {
-                android.util.Log.e(TAG, "Failed to start foreground in onStartCommand: ${e.message}", e)
+                Log.e(TAG, "Failed to start foreground in onStartCommand: ${e.message}", e)
             }
         }
         
-        // Renew wake lock if enabled and needed - this is critical to keep camera active
+        // Renew wake lock
         if (isWakeLockEnabled) {
             wakeLock?.let {
                 if (!it.isHeld) {
                     try {
                         it.acquire()
-                        android.util.Log.d(TAG, "Wake lock renewed in onStartCommand")
+                        Log.d(TAG, "Wake lock renewed in onStartCommand")
                     } catch (e: Exception) {
-                        android.util.Log.e(TAG, "Failed to renew wake lock: ${e.message}", e)
-                    }
-                }
-            } ?: run {
-                // Wake lock is null - recreate it
-                val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
-                wakeLock = powerManager.newWakeLock(
-                    PowerManager.PARTIAL_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEUP,
-                    "iPoint::CameraForegroundWakeLock"
-                ).apply {
-                    setReferenceCounted(false)
-                    try {
-                        acquire()
-                        isWakeLockEnabled = true
-                        android.util.Log.d(TAG, "Wake lock recreated and acquired")
-                    } catch (e: Exception) {
-                        android.util.Log.e(TAG, "Failed to acquire wake lock: ${e.message}", e)
-                        isWakeLockEnabled = false
+                        Log.e(TAG, "Failed to renew wake lock: ${e.message}", e)
                     }
                 }
             }
@@ -143,14 +244,63 @@ class CameraForegroundService : Service() {
     
     override fun onBind(intent: Intent?): IBinder? = null
     
+    // FaceLandmarkerHelper.LandmarkerListener implementation
+    override fun onResults(resultBundle: FaceLandmarkerHelper.ResultBundle) {
+        try {
+            val landmarks = resultBundle.faceLandmarkerResults.firstOrNull()?.faceLandmarks()?.firstOrNull()
+            if (landmarks == null) {
+                // No face detected - hide pointer
+                PointerOverlayService.hidePointer()
+                return
+            }
+            
+            // Update eye tracker settings
+            eyeTracker?.setUseOneEye(settingsManager?.useOneEyeDetection ?: false)
+            
+            // Track eyes
+            val trackingResult = eyeTracker?.trackEyes(landmarks) ?: return
+            
+            // Update blink detector threshold
+            eyeBlinkDetector?.setBlinkThreshold(settingsManager?.blinkThreshold ?: 0.3f)
+            
+            // Detect blink for click
+            val blinkDetected = eyeBlinkDetector?.processEyeArea(trackingResult.eyeArea) ?: false
+            if (blinkDetected) {
+                // Trigger click
+                MouseControlService.getInstance()?.performClick()
+                PointerOverlayService.indicateClick()
+                LogcatManager.addLog("Blink click detected", "Service")
+            }
+            
+            // Calculate adjusted position
+            val (adjustedX, adjustedY) = trackingCalculator?.calculateAdjustedPosition(trackingResult)
+                ?: Pair(trackingResult.screenX, trackingResult.screenY)
+            
+            // Update pointer and mouse cursor (only if cursor movement is enabled)
+            if (CameraFragment.isCursorMovementEnabled()) {
+                PointerOverlayService.updatePointerPosition(adjustedX.toInt(), adjustedY.toInt())
+                MouseControlService.getInstance()?.moveCursor(adjustedX.toInt(), adjustedY.toInt())
+            } else {
+                PointerOverlayService.hidePointer()
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error processing results: ${e.message}", e)
+        }
+    }
+    
+    override fun onError(error: String, errorCode: Int) {
+        Log.e(TAG, "FaceLandmarkerHelper error: $error (code: $errorCode)")
+        LogcatManager.addLog("MediaPipe error: $error", "Service")
+    }
+    
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "Camera Active",
-                NotificationManager.IMPORTANCE_DEFAULT // Changed to DEFAULT so it's more visible
+                "iPoint Background Service",
+                NotificationManager.IMPORTANCE_DEFAULT
             ).apply {
-                description = "Keeps camera active for eye tracking"
+                description = "Keeps eye tracking active in background"
                 setShowBadge(true)
                 setSound(null, null)
                 enableVibration(false)
@@ -171,7 +321,6 @@ class CameraForegroundService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         
-        // Create toggle action for wake lock - use getService to send intent directly to service
         val toggleIntent = Intent(this, CameraForegroundService::class.java).apply {
             action = ACTION_TOGGLE_WAKELOCK
         }
@@ -181,13 +330,6 @@ class CameraForegroundService : Service() {
             toggleIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-        
-        // Use a better icon - battery/wake lock icon
-        val iconRes = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            android.R.drawable.ic_lock_power_off
-        } else {
-            android.R.drawable.ic_dialog_info
-        }
         
         val wakeLockStatus = if (isWakeLockEnabled) "ON" else "OFF"
         val toggleText = if (isWakeLockEnabled) "Turn OFF" else "Turn ON"
@@ -200,26 +342,22 @@ class CameraForegroundService : Service() {
         val notificationBuilder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("?? iPoint - Wake Lock: $wakeLockStatus")
             .setContentText(if (isWakeLockEnabled) "Wake lock ON ? Camera active ? MediaPipe running" else "Wake lock OFF ? Camera may pause")
-            .setSmallIcon(iconRes)
-            .setLargeIcon(null) // No large icon to keep it compact
+            .setSmallIcon(android.R.drawable.ic_lock_power_off)
             .setContentIntent(pendingIntent)
             .setOngoing(true)
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT) // Changed to DEFAULT so it's visible
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setShowWhen(false)
-            .setAutoCancel(false) // Don't auto-cancel
+            .setAutoCancel(false)
         
-        // Add action button - ensure it's added BEFORE setting style for maximum compatibility
         val action = NotificationCompat.Action(
             statusIcon,
             toggleText,
             togglePendingIntent
         )
         notificationBuilder.addAction(action)
-        android.util.Log.d(TAG, "Action button added: $toggleText (icon res: $statusIcon)")
         
-        // Set expanded style - action buttons should still be visible
         return notificationBuilder
             .setStyle(NotificationCompat.BigTextStyle()
                 .bigText(if (isWakeLockEnabled) {
@@ -234,74 +372,79 @@ class CameraForegroundService : Service() {
         isWakeLockEnabled = !isWakeLockEnabled
         
         if (isWakeLockEnabled) {
-            // Acquire wake lock
             wakeLock?.let {
                 if (!it.isHeld) {
                     try {
                         it.acquire()
-                        android.util.Log.d(TAG, "Wake lock toggled ON")
-                        com.qali.ipoint.LogcatManager.addLog("Wake lock enabled - MediaPipe will continue processing", "Service")
+                        Log.d(TAG, "Wake lock toggled ON")
+                        LogcatManager.addLog("Wake lock enabled - MediaPipe will continue processing", "Service")
                     } catch (e: Exception) {
-                        android.util.Log.e(TAG, "Failed to acquire wake lock: ${e.message}", e)
+                        Log.e(TAG, "Failed to acquire wake lock: ${e.message}", e)
                         isWakeLockEnabled = false
                     }
                 }
             } ?: run {
-                // Wake lock is null - recreate it
                 val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
                 wakeLock = powerManager.newWakeLock(
-                    PowerManager.PARTIAL_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEUP,
+                    PowerManager.PARTIAL_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEP,
                     "iPoint::CameraForegroundWakeLock"
                 ).apply {
                     setReferenceCounted(false)
                     try {
                         acquire()
-                        android.util.Log.d(TAG, "Wake lock created and acquired")
-                        com.qali.ipoint.LogcatManager.addLog("Wake lock enabled - MediaPipe will continue processing", "Service")
+                        Log.d(TAG, "Wake lock created and acquired")
+                        LogcatManager.addLog("Wake lock enabled - MediaPipe will continue processing", "Service")
                     } catch (e: Exception) {
-                        android.util.Log.e(TAG, "Failed to acquire wake lock: ${e.message}", e)
+                        Log.e(TAG, "Failed to acquire wake lock: ${e.message}", e)
                         isWakeLockEnabled = false
                     }
                 }
             }
         } else {
-            // Release wake lock
             wakeLock?.let {
                 if (it.isHeld) {
                     try {
                         it.release()
-                        android.util.Log.d(TAG, "Wake lock toggled OFF")
-                        com.qali.ipoint.LogcatManager.addLog("Wake lock disabled - MediaPipe may pause when device sleeps", "Service")
+                        Log.d(TAG, "Wake lock toggled OFF")
+                        LogcatManager.addLog("Wake lock disabled - MediaPipe may pause when device sleeps", "Service")
                     } catch (e: Exception) {
-                        android.util.Log.e(TAG, "Failed to release wake lock: ${e.message}", e)
+                        Log.e(TAG, "Failed to release wake lock: ${e.message}", e)
                     }
                 }
             }
         }
         
-        // Update notification to reflect new state
         try {
             startForeground(NOTIFICATION_ID, createNotification())
         } catch (e: Exception) {
-            android.util.Log.e(TAG, "Failed to update notification: ${e.message}", e)
+            Log.e(TAG, "Failed to update notification: ${e.message}", e)
         }
-    }
-    
-    fun updateNotification(text: String? = null) {
-        // Reuse createNotification but update text
-        val notification = createNotification()
-        notificationManager?.notify(NOTIFICATION_ID, notification)
     }
     
     override fun onDestroy() {
         super.onDestroy()
         instance = null
         
+        // Release camera
+        cameraProvider?.unbindAll()
+        camera = null
+        imageAnalysis = null
+        
+        // Cleanup MediaPipe
+        faceLandmarkerHelper?.clearFaceLandmarker()
+        faceLandmarkerHelper = null
+        
+        // Release wake lock
         wakeLock?.let {
             if (it.isHeld) {
                 it.release()
             }
         }
         wakeLock = null
+        
+        // Shutdown executor
+        backgroundExecutor.shutdown()
+        
+        LogcatManager.addLog("Background service stopped", "Service")
     }
 }
