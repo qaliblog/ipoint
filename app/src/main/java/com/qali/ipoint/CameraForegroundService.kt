@@ -121,6 +121,15 @@ class CameraForegroundService : Service(), FaceLandmarkerHelper.LandmarkerListen
         trackingCalculator = TrackingCalculator(settingsManager!!, displayMetrics!!)
         eyeBlinkDetector = EyeBlinkDetector(settingsManager!!.blinkThreshold)
         
+        // Start pointer overlay service
+        try {
+            val pointerIntent = Intent(this, PointerOverlayService::class.java)
+            startService(pointerIntent)
+            LogcatManager.addLog("Pointer overlay service started from background service", "Service")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to start pointer service: ${e.message}", e)
+        }
+        
         // Initialize FaceLandmarkerHelper
         backgroundExecutor.execute {
             try {

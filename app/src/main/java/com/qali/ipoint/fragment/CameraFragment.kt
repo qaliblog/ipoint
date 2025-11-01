@@ -284,9 +284,8 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
         fragmentCameraBinding.overlay.setEyeTracker(eyeTracker)
 
         // Setup settings button - use FragmentManager directly instead of Navigation Component
-        // Delay setup slightly to ensure fragment is fully ready
-        fragmentCameraBinding.settingsButton.post {
-            fragmentCameraBinding.settingsButton.setOnClickListener {
+        // Set up immediately without delay to ensure it works
+        fragmentCameraBinding.settingsButton.setOnClickListener {
                 // Prevent multiple rapid clicks
                 if (isSettingsOpening) {
                     LogcatManager.addLog("Settings opening already in progress, ignoring click", "Camera")
@@ -303,25 +302,19 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
                 LogcatManager.addLog("=== Settings button clicked ===", "Camera")
                 
                 try {
+                    // Disable cursor when opening settings
+                    CameraFragment.setCursorMovementEnabled(false)
+                    
                     val activity = requireActivity()
                     val fragmentManager = activity.supportFragmentManager
                     
                     // Check if settings fragment is already showing or in backstack
                     val existingFragment = fragmentManager.findFragmentByTag("SettingsFragment")
-                    if (existingFragment != null) {
-                        if (existingFragment.isVisible) {
-                            LogcatManager.addLog("Settings already visible, closing...", "Camera")
-                            fragmentManager.popBackStack("SettingsFragment", androidx.fragment.app.FragmentManager.POP_BACK_STACK_INCLUSIVE)
-                            return@setOnClickListener
-                        } else {
-                            // Fragment exists but not visible - make it visible
-                            fragmentManager.beginTransaction()
-                                .show(existingFragment)
-                                .addToBackStack("SettingsFragment")
-                                .commitAllowingStateLoss()
-                            LogcatManager.addLog("Showing existing SettingsFragment", "Camera")
-                            return@setOnClickListener
-                        }
+                    if (existingFragment != null && existingFragment.isVisible) {
+                        LogcatManager.addLog("Settings already visible, closing...", "Camera")
+                        fragmentManager.popBackStack("SettingsFragment", androidx.fragment.app.FragmentManager.POP_BACK_STACK_INCLUSIVE)
+                        CameraFragment.setCursorMovementEnabled(true)
+                        return@setOnClickListener
                     }
                     
                     isSettingsOpening = true
@@ -347,6 +340,7 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
                     
                 } catch (e: Exception) {
                     isSettingsOpening = false
+                    CameraFragment.setCursorMovementEnabled(true)
                     LogcatManager.addLog("Failed to open settings: ${e.message}", "Camera")
                     Log.e(TAG, "Error opening settings", e)
                     e.printStackTrace()
@@ -387,28 +381,12 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
         // Initialize logging
         LogcatManager.addLog("CameraFragment initialized", "Camera")
 
-        // Initialize our background executor
+        // DON'T initialize camera here - the service handles all camera operations
+        // Only show preview if service is running (optional, for UI feedback)
+        // The background service will handle all camera processing and cursor updates
+        
+        // Initialize background executor for any fragment-specific tasks
         backgroundExecutor = Executors.newSingleThreadExecutor()
-
-        // Wait for the views to be properly laid out
-        fragmentCameraBinding.viewFinder.post {
-            // Set up the camera and its use cases
-            setUpCamera()
-        }
-
-        // Create the FaceLandmarkerHelper that will handle the inference - Force GPU
-        backgroundExecutor.execute {
-            faceLandmarkerHelper = FaceLandmarkerHelper(
-                context = requireContext(),
-                runningMode = RunningMode.LIVE_STREAM,
-                minFaceDetectionConfidence = viewModel.currentMinFaceDetectionConfidence,
-                minFaceTrackingConfidence = viewModel.currentMinFaceTrackingConfidence,
-                minFacePresenceConfidence = viewModel.currentMinFacePresenceConfidence,
-                maxNumFaces = viewModel.currentMaxFaces,
-                currentDelegate = FaceLandmarkerHelper.DELEGATE_GPU, // Force GPU
-                faceLandmarkerHelperListener = this
-            )
-        }
     }
     
     private fun requestOverlayPermission() {
