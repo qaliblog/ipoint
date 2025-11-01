@@ -347,7 +347,6 @@ class CameraFragment : Fragment(), FaceLandmarkerHelper.LandmarkerListener {
                     Toast.makeText(requireContext(), "Failed to open settings: ${e.message}", Toast.LENGTH_SHORT).show()
                 }
             }
-        }
         
         LogcatManager.addLog("Settings button click listener set up", "Camera")
         Log.e(TAG, "Settings button click listener set up")
