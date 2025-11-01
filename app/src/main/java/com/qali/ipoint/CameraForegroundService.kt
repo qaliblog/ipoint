@@ -182,6 +182,13 @@ class CameraForegroundService : Service(), FaceLandmarkerHelper.LandmarkerListen
                     backgroundExecutor,
                     ImageAnalysis.Analyzer { imageProxy: ImageProxy ->
                         try {
+                            // Log periodically to confirm frames are being processed
+                            val now = System.currentTimeMillis()
+                            if (now % 5000 < 100) { // Log every 5 seconds
+                                LogcatManager.addLog("Service: Processing camera frame - MediaPipe active", "Service")
+                                Log.d(TAG, "Processing camera frame in background service")
+                            }
+                            
                             // Update settings dynamically
                             eyeTracker?.setUseOneEye(settingsManager?.useOneEyeDetection ?: false)
                             eyeBlinkDetector?.setBlinkThreshold(settingsManager?.blinkThreshold ?: 0.3f)
@@ -190,6 +197,7 @@ class CameraForegroundService : Service(), FaceLandmarkerHelper.LandmarkerListen
                             faceLandmarkerHelper?.detectLiveStream(imageProxy, isFrontCamera = true)
                         } catch (e: Exception) {
                             Log.e(TAG, "Error processing frame: ${e.message}", e)
+                            LogcatManager.addLog("Service: Frame processing error: ${e.message}", "Service")
                             try {
                                 imageProxy.close()
                             } catch (closeEx: Exception) {
@@ -300,6 +308,12 @@ class CameraForegroundService : Service(), FaceLandmarkerHelper.LandmarkerListen
             if (CameraFragment.isCursorMovementEnabled()) {
                 PointerOverlayService.updatePointerPosition(adjustedX, adjustedY)
                 MouseControlService.moveCursor(adjustedX, adjustedY)
+                
+                // Log periodically to confirm cursor updates (every 3 seconds)
+                val now = System.currentTimeMillis()
+                if (now % 3000 < 100) {
+                    LogcatManager.addLog("Service: Cursor updated to (${adjustedX.toInt()}, ${adjustedY.toInt()})", "Service")
+                }
             } else {
                 PointerOverlayService.getInstance()?.hidePointer()
             }
