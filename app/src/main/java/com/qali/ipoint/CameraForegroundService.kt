@@ -100,7 +100,7 @@ class CameraForegroundService : Service(), FaceLandmarkerHelper.LandmarkerListen
         // Acquire wake lock
         val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
         wakeLock = powerManager.newWakeLock(
-            PowerManager.PARTIAL_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEP,
+            PowerManager.PARTIAL_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEUP,
             "iPoint::CameraForegroundWakeLock"
         ).apply {
             setReferenceCounted(false)
@@ -171,7 +171,7 @@ class CameraForegroundService : Service(), FaceLandmarkerHelper.LandmarkerListen
                 // Set analyzer
                 imageAnalysis?.setAnalyzer(
                     backgroundExecutor,
-                    ImageAnalysis.Analyzer { imageProxy ->
+                    ImageAnalysis.Analyzer { imageProxy: ImageProxy ->
                         try {
                             // Update settings dynamically
                             eyeTracker?.setUseOneEye(settingsManager?.useOneEyeDetection ?: false)
@@ -181,7 +181,11 @@ class CameraForegroundService : Service(), FaceLandmarkerHelper.LandmarkerListen
                             faceLandmarkerHelper?.detectLiveStream(imageProxy, isFrontCamera = true)
                         } catch (e: Exception) {
                             Log.e(TAG, "Error processing frame: ${e.message}", e)
-                            imageProxy.close()
+                            try {
+                                imageProxy.close()
+                            } catch (closeEx: Exception) {
+                                // Ignore close errors
+                            }
                         }
                     }
                 )
