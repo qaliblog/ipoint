@@ -38,16 +38,13 @@ class MainActivity : AppCompatActivity() {
         // Keep screen on to prevent activity suspension
         window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         
-        // Acquire wake lock to keep camera running in background
-        // Use SCREEN_DIM_WAKE_LOCK which keeps CPU and screen on (better for camera)
-        val powerManager = getSystemService(POWER_SERVICE) as PowerManager
-        wakeLock = powerManager.newWakeLock(
-            PowerManager.PARTIAL_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEUP,
-            "iPoint::CameraWakeLock"
-        ).apply {
-            // Use a longer timeout and set reference counted to keep it alive
-            setReferenceCounted(false)
-            acquire()
+        // Start background service immediately - it will handle all camera and tracking operations
+        // This service will continue running even when the app is closed
+        try {
+            CameraForegroundService.start(this)
+            android.util.Log.d("MainActivity", "Background service started")
+        } catch (e: Exception) {
+            android.util.Log.e("MainActivity", "Failed to start background service: ${e.message}", e)
         }
         
         activityMainBinding = ActivityMainBinding.inflate(layoutInflater)
