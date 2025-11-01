@@ -15,7 +15,8 @@ import android.util.Log
 import android.view.WindowManager
 import androidx.camera.core.*
 import androidx.camera.core.CameraSelector
-import androidx.camera.lifecycle.ProcessLifecycleOwner
+import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.google.mediapipe.tasks.vision.core.RunningMode
@@ -247,10 +248,16 @@ class CameraForegroundService : Service(), FaceLandmarkerHelper.LandmarkerListen
     // FaceLandmarkerHelper.LandmarkerListener implementation
     override fun onResults(resultBundle: FaceLandmarkerHelper.ResultBundle) {
         try {
-            val landmarks = resultBundle.faceLandmarkerResults.firstOrNull()?.faceLandmarks()?.firstOrNull()
-            if (landmarks == null) {
+            val faceLandmarksList = resultBundle.result.faceLandmarks()
+            if (faceLandmarksList.isEmpty()) {
                 // No face detected - hide pointer
-                PointerOverlayService.hidePointer()
+                PointerOverlayService.getInstance()?.hidePointer()
+                return
+            }
+            
+            val landmarks = faceLandmarksList.firstOrNull()
+            if (landmarks == null) {
+                PointerOverlayService.getInstance()?.hidePointer()
                 return
             }
             
@@ -267,7 +274,7 @@ class CameraForegroundService : Service(), FaceLandmarkerHelper.LandmarkerListen
             val blinkDetected = eyeBlinkDetector?.processEyeArea(trackingResult.eyeArea) ?: false
             if (blinkDetected) {
                 // Trigger click
-                MouseControlService.getInstance()?.performClick()
+                MouseControlService.performClick()
                 PointerOverlayService.indicateClick()
                 LogcatManager.addLog("Blink click detected", "Service")
             }
@@ -278,10 +285,10 @@ class CameraForegroundService : Service(), FaceLandmarkerHelper.LandmarkerListen
             
             // Update pointer and mouse cursor (only if cursor movement is enabled)
             if (CameraFragment.isCursorMovementEnabled()) {
-                PointerOverlayService.updatePointerPosition(adjustedX.toInt(), adjustedY.toInt())
-                MouseControlService.getInstance()?.moveCursor(adjustedX.toInt(), adjustedY.toInt())
+                PointerOverlayService.updatePointerPosition(adjustedX, adjustedY)
+                MouseControlService.moveCursor(adjustedX, adjustedY)
             } else {
-                PointerOverlayService.hidePointer()
+                PointerOverlayService.getInstance()?.hidePointer()
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error processing results: ${e.message}", e)
@@ -386,7 +393,7 @@ class CameraForegroundService : Service(), FaceLandmarkerHelper.LandmarkerListen
             } ?: run {
                 val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
                 wakeLock = powerManager.newWakeLock(
-                    PowerManager.PARTIAL_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEP,
+                    PowerManager.PARTIAL_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEUP,
                     "iPoint::CameraForegroundWakeLock"
                 ).apply {
                     setReferenceCounted(false)
